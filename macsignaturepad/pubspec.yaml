@@ -12,11 +12,21 @@ dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.2
-  firebase_core: ^2.17.0
-  firebase_auth: ^4.10.1
-  cloud_firestore: ^4.9.3
-  firebase_storage: ^11.2.8
+  cupertino_icons: ^1.0.6
+  firebase_core: ^2.19.0
+  firebase_auth: ^4.11.1
+  cloud_firestore: ^4.11.0
+  firebase_storage: ^11.3.1
+  firebase_ui_auth: ^1.9.1
+  hand_signature: ^3.0.1
+  lottie: ^2.7.0
+  pdfx: ^2.4.0
+  country_code_picker: ^3.0.0
+  # internet_file: ^1.2.0
+  dio: ^5.3.3
+  syncfusion_flutter_pdf: ^23.1.41
+  url_launcher: ^6.1.14
+
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +37,5 @@ dev_dependencies:
 flutter:
 
   uses-material-design: true
+  assets:
+    - assets/

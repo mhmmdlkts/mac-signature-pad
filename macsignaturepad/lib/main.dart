@@ -1,68 +1,43 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:macsignaturepad/decoration/colors.dart';
+import 'package:macsignaturepad/screens/admin_screen.dart';
+import 'package:macsignaturepad/screens/advisors_screen.dart';
+import 'package:macsignaturepad/screens/create_customer_screen.dart';
+import 'package:macsignaturepad/screens/login_screen.dart';
+import 'package:macsignaturepad/screens/no_signature_screen.dart';
+import 'package:macsignaturepad/screens/sign_screen.dart';
+import 'package:macsignaturepad/services/firebase_service.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseService.initializeApp();
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Map<String, String> args;
+  MyApp({args, super.key}) : args = args ?? {};
+
+  bool get isSignedIn => FirebaseAuth.instance.currentUser != null;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Mac Signature Pad ',
+      debugShowCheckedModeBanner: false,
+      initialRoute: isSignedIn?'/admin':'/',
+      routes: {
+        '/': (context) => isSignedIn?AdminScreen():NoSignatureScreen(),
+        '/sign': (context) => SignScreen(),
+        '/login': (context) => LoginScreen(),
+        '/admin': (context) => isSignedIn?AdminScreen():LoginScreen(),
+        '/admin/createCustomer': (context) => CreateCustomerScreen(),
+        '/admin/advisors': (context) => AdvisorsScreen(),
+      },
+      title: 'Mac Signature Pad',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: firstColor),
         useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Mac Signature Pad'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
