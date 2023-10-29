@@ -1,4 +1,4 @@
-const Map<String, List<Map<String, dynamic>>> vollmachtV1 = {
+{
   "name": [
     {
       "x": 217.4179634409178,
@@ -79,4 +79,4 @@ const Map<String, List<Map<String, dynamic>>> vollmachtV1 = {
       "page": 0
     }
   ]
-};
+}

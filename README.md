@@ -1,1 +1,1 @@
-# mac-signature-pad
+# mac-signature

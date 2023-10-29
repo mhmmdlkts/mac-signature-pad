@@ -10,6 +10,7 @@ import 'package:macsignaturepad/services/advisor_service.dart';
 import 'package:macsignaturepad/services/all_services_service.dart';
 import 'package:macsignaturepad/services/customer_service.dart';
 import '../models/customer.dart';
+import 'package:intl/intl.dart';
 
 class CreateCustomerScreen extends StatefulWidget {
   const CreateCustomerScreen({super.key});
@@ -29,6 +30,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   String _phone = '';
   String _email = '';
   Timestamp? _birthdate;
+  Timestamp? _nextTermin;
   String? _uid = '';
   String? _stnr = '';
   String _zip = '';
@@ -59,6 +61,11 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
       setState(() {
         _isLoading = true;
       });
+      _insuranceOptions.values.forEach((element) {
+        element.forEach((element) {
+          element.notes = element.getNotes;
+        });
+      });
       await CustomerService.addNewCustomer(
         Customer.create(
           name: _name,
@@ -71,6 +78,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
           street: _street,
           uid: _uid,
           stnr: _stnr,
+          nextTermin: _nextTermin,
           details: _insuranceOptions.values.expand((element) => element).toList(),
         ),
       );
@@ -90,6 +98,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          mainAxisSize: MainAxisSize.max,
           children: [
             Form(
               key: _formKey,
@@ -121,6 +130,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
 
                   TextFormField(
+                    textCapitalization: TextCapitalization.words,
+                    keyboardType: TextInputType.name,
                     decoration: InputDecoration(labelText: isCompany?'Firmenname':'Name'),
                     onSaved: (value) {
                       _name = value!;
@@ -134,6 +145,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
                   if (!isCompany)
                     TextFormField(
+                      textCapitalization: TextCapitalization.words,
+                      keyboardType: TextInputType.name,
                       decoration: InputDecoration(labelText: 'Nachname'),
                       onSaved: (value) {
                         _surname = value!;
@@ -145,9 +158,9 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                         return null;
                       },
                     ),
-                  TextFormField(
-                    decoration: InputDecoration(labelText: 'Telefonnummer',
-                      prefix: CountryCodePicker(
+                  Row(
+                    children: [
+                      CountryCodePicker(
                         onChanged: (CountryCode countryCode) {
                           _countryCode = countryCode.code??'+43';
                         },
@@ -159,24 +172,31 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                         showOnlyCountryWhenClosed: false,
                         alignLeft: false,
                       ),
-                    ),
-                    onSaved: (value) {
-                      _phone = value!;
-                    },
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Bitte eine Telefonnummer eingeben';
-                      }
-                      if (_countryCode.isEmpty) {
-                        return 'Bitte ein Land auswählen';
-                      }
-                      if (_countryCode == '+43' && value!.split('').first == '0') {
-                        return 'Telefonnummer darf nicht mit 0 beginnen';
-                      }
-                      return null;
-                    },
+                      Expanded(
+                        child: TextFormField(
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(labelText: 'Telefonnummer'),
+                          onSaved: (value) {
+                            _phone = value!;
+                          },
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Bitte eine Telefonnummer eingeben';
+                            }
+                            if (_countryCode.isEmpty) {
+                              return 'Bitte ein Land auswählen';
+                            }
+                            if (_countryCode == '+43' && value!.split('').first == '0') {
+                              return 'Telefonnummer darf nicht mit 0 beginnen';
+                            }
+                            return null;
+                          },
+                        ),
+                      )
+                    ],
                   ),
                   TextFormField(
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(labelText: 'E-Mail'),
                     onSaved: (value) {
                       _email = value!;
@@ -192,6 +212,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     },
                   ),
                   TextFormField(
+                    keyboardType: TextInputType.datetime,
                     decoration: InputDecoration(labelText: 'Geburtsdatum'),
                     onSaved: (value) {
                       _birthdate = parseDateTime(value!);
@@ -207,6 +228,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     },
                   ),
                   TextFormField(
+                    keyboardType: TextInputType.number,
                     decoration: InputDecoration(labelText: 'Postleitzahl'),
                     onSaved: (value) {
                       _zip = value!;
@@ -219,6 +241,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     },
                   ),
                   TextFormField(
+                    textCapitalization: TextCapitalization.words,
+                    keyboardType: TextInputType.name,
                     decoration: InputDecoration(labelText: 'Stadt'),
                     onSaved: (value) {
                       _city = value!;
@@ -231,6 +255,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     },
                   ),
                   TextFormField(
+                    textCapitalization: TextCapitalization.words,
+                    keyboardType: TextInputType.streetAddress,
                     decoration: InputDecoration(labelText: 'Straße'),
                     onSaved: (value) {
                       _street = value!;
@@ -244,6 +270,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
                   if (isCompany)
                     TextFormField(
+                      textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(labelText: 'UID'),
                       onSaved: (value) {
                         _uid = value;
@@ -262,38 +289,103 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
             Container(height: 20),
             ..._insuranceOptions.keys.map((option) {
               return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(height: 20),
-                    Text(option + ':', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Container(height: 10),
-                    ListView.separated(
-                      shrinkWrap: true,
-                      itemBuilder: (context, index) {
-                        return singleInsuraceOption(
-                            service: _insuranceOptions[option]![index]
-                        );
-                      },
-                      separatorBuilder: (context, index) => Divider(height: 0),
-                      itemCount: _insuranceOptions[option]!.length,
-                    ),
-                  ]
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(height: 20),
+                  Text(option + ':', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Container(height: 10),
+                  ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemBuilder: (context, index) {
+                      return singleInsuraceOption(
+                          service: _insuranceOptions[option]![index]
+                      );
+                    },
+                    separatorBuilder: (context, index) => Divider(height: 0),
+                    itemCount: _insuranceOptions[option]!.length,
+                  ),
+                ]
               );
             }).toList(),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  Random rnd = Random();
-                  _insuranceOptions.forEach((key, value) {
-                    value.forEach((element) {
-                      // set random status (0,2)
-                      element.status = rnd.nextInt(3);
+            Divider(height: 0,),
+            Container(height: 10,),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _insuranceOptions.forEach((key, value) {
+                        value.forEach((element) {
+                          if (element.status == null) {
+                            element.status = 0;
+                          }
+                        });
+                      });
                     });
-                  });
-                });
-              },
-              child: Text('RandomClick'),
+                  },
+                  child: Text('Rest Ja'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _insuranceOptions.forEach((key, value) {
+                        value.forEach((element) {
+                          if (element.status == null) {
+                            element.status = 1;
+                          }
+                        });
+                      });
+                    });
+                  },
+                  child: Text('Rest Nein'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _insuranceOptions.forEach((key, value) {
+                        value.forEach((element) {
+                          if (element.status == null) {
+                            element.status = 2;
+                          }
+                        });
+                      });
+                    });
+                  },
+                  child: Text('Rest Ändern'),
+                ),
+              ],
             ),
+            Container(height: 10),
+            Text('Nächster Termin: ${_nextTermin==null?'-':DateFormat('dd.MM.yyyy').format(_nextTermin!.toDate())}'),
+            Container(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(onPressed: () {
+                  setState(() {
+                    _nextTermin = null;
+                  });
+                }, child: Text('X')),
+                ElevatedButton(onPressed: () {
+                  setState(() {
+                    _nextTermin = Timestamp.fromDate(DateTime.now().add(Duration(days: 365)));
+                  });
+                }, child: Text('1 Jahr')),
+                ElevatedButton(onPressed: () {
+                  setState(() {
+                    _nextTermin = Timestamp.fromDate(DateTime.now().add(Duration(days: 365 * 2)));
+                  });
+                }, child: Text('2 Jahr')),
+                ElevatedButton(onPressed: () {
+                  setState(() {
+                    _nextTermin = Timestamp.fromDate(DateTime.now().add(Duration(days: 365 * 3)));
+                  });
+                }, child: Text('3 Jahr')),
+              ],
+            ),
+            Container(height: 10),
             ElevatedButton(
               onPressed: _isLoading?null:_saveForm,
               child: Text('Speichern'),
@@ -322,49 +414,45 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
     return Container(
       padding: EdgeInsets.all(5),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(service.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          if (service.notes != null && service.notes!.isNotEmpty)
+            Text('(${service.notes})'),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(service.name),
-              if (service.notes != null && service.notes!.isNotEmpty)
-                Text('(${service.notes})'),
-              Row(
-                children: [
-                  Radio(
-                    value: 0,
-                    groupValue: service.status,
-                    onChanged: (int? value) {
-                      setState(() {
-                        service.status = value!;
-                      });
-                    },
-                  ),
-                  Text('Ja'),
-                  Container(width: 10),
-                  Radio(
-                    value: 1,
-                    groupValue: service.status,
-                    onChanged: (int? value) {
-                      setState(() {
-                        service.status = value!;
-                      });
-                    },
-                  ),
-                  Text('Nein'),
-                  Container(width: 10),
-                  Radio(
-                    value: 2,
-                    groupValue: service.status,
-                    onChanged: (int? value) {
-                      setState(() {
-                        service.status = value!;
-                      });
-                    },
-                  ),
-                  Text('Ändern'),
-                ],
+              Radio(
+                value: 0,
+                groupValue: service.status,
+                onChanged: (int? value) {
+                  setState(() {
+                    service.status = value!;
+                  });
+                },
               ),
+              Text('Ja'),
+              Container(width: 10),
+              Radio(
+                value: 1,
+                groupValue: service.status,
+                onChanged: (int? value) {
+                  setState(() {
+                    service.status = value!;
+                  });
+                },
+              ),
+              Text('Nein'),
+              Container(width: 10),
+              Radio(
+                value: 2,
+                groupValue: service.status,
+                onChanged: (int? value) {
+                  setState(() {
+                    service.status = value!;
+                  });
+                },
+              ),
+              Text('Ändern'),
             ],
           ),
           Text(service.getNotes),

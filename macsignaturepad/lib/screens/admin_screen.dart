@@ -42,8 +42,10 @@ class _AdminScreenState extends State<AdminScreen> {
     InitService.init(id: context.hashCode, function: () {
       setState(() {});
     }).then((value) => {
-      setState(() {
-        _isLoading = false;
+      Future.delayed(Duration(seconds: 1), () {
+        setState(() {
+          _isLoading = false;
+        });
       })
     });
     super.initState();
@@ -62,7 +64,7 @@ class _AdminScreenState extends State<AdminScreen> {
       appBar: AppBar(
         title: Text('Kundenübersicht'),
 
-        actions: [
+        actions: !AdvisorService.isAdmin?null:[
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () {
@@ -90,16 +92,15 @@ class _AdminScreenState extends State<AdminScreen> {
                   ),
                 ),
               ),
-              if (AdvisorService.isAdmin)
-                Container(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      await Navigator.pushNamed(context, '/admin/createCustomer');
-                    },
-                    child: Text('Neuen Kunden anlegen +'),
-                  ),
+              Container(
+                padding: EdgeInsets.only(bottom: 10),
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await Navigator.pushNamed(context, '/admin/createCustomer');
+                  },
+                  child: Text('Neuen Kunden anlegen +'),
                 ),
+              ),
               Builder(
                 builder: (ctx) {
                   List<Customer> customers = getCustomers();
@@ -148,8 +149,9 @@ class _AdminScreenState extends State<AdminScreen> {
                      color: Colors.grey[300],
                      child: InkWell(
                        borderRadius: BorderRadius.circular(8),
-                       onTap: selectedCustomer.value!.email == null?null:() {
-                         customer.sendEmail();
+                       onTap: selectedCustomer.value!.email == null?null:() async {
+                         await customer.sendEmail();
+                         selectedCustomer.notifyListeners();
                        },
                        child: Container(
                            padding: EdgeInsets.all(8),
@@ -164,7 +166,7 @@ class _AdminScreenState extends State<AdminScreen> {
                  ),
                  Container(width: 10),
 
-                 Material(
+                 /*Material(
                      borderRadius: BorderRadius.circular(8),
                      color: Colors.grey[300],
                      child: InkWell(
@@ -183,7 +185,7 @@ class _AdminScreenState extends State<AdminScreen> {
                        ),
                      )
                  ),
-                 Container(width: 10),
+                 Container(width: 10),*/
                  Material(
                      borderRadius: BorderRadius.circular(8),
                      color: Colors.grey[300],

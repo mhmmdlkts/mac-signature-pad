@@ -21,9 +21,15 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return android;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for android - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.iOS:
-        return ios;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for ios - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -47,43 +53,11 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBRsIGon3wb_mhk49SBVu_CRfkvFkWxgmQ',
-    appId: '1:240478330227:web:c75d1839ade4526a907906',
-    messagingSenderId: '240478330227',
-    projectId: 'mac-signature-pad',
-    authDomain: 'mac-signature-pad.firebaseapp.com',
-    storageBucket: 'mac-signature-pad.appspot.com',
+    apiKey: 'AIzaSyBrya8BxMGs-1VUbcaLFG9oG-0OpMeWS_g',
+    appId: '1:481471445060:web:1f93ea9d6e5040a682a411',
+    messagingSenderId: '481471445060',
+    projectId: 'mac-signature',
+    authDomain: 'mac-signature.firebaseapp.com',
+    storageBucket: 'mac-signature.appspot.com',
   );
-
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCJXwDutjxZjuftJxKgH5T6MJhfd8MAy6k',
-    appId: '1:240478330227:android:2207b41c9d9ca8eb907906',
-    messagingSenderId: '240478330227',
-    projectId: 'mac-signature-pad',
-    storageBucket: 'mac-signature-pad.appspot.com',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCOSDasmsWi4l1oJfl5gLv6v4iXKM2kcVs',
-    appId: '1:240478330227:ios:213acc947d403e5c907906',
-    messagingSenderId: '240478330227',
-    projectId: 'mac-signature-pad',
-    storageBucket: 'mac-signature-pad.appspot.com',
-    iosBundleId: 'com.kreiseck.macsignaturepad',
-  );
-
-
-  static Map<String, String> get adminsdk => {
-    "type": "service_account",
-    "project_id": "mac-signature-pad",
-    "private_key_id": "62ab0818c92fbcd051471a77cca07d541f3c6fd1",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+YfGSG/QR/y/w\ncILG2Rqf6JeBrMWxGgbt9pT9NMiJzDlj4FMMq0D3EduV6WoSLgM3c8uTRkvvWfZw\nYxqShJbJpiq15Q3wGm+5EIbPr2pX091ZF/iRPcxKcgQxexGxZANvcgqils2lK2ft\nvkQNNlo8ZcbIipDFdCEcBjSQy4Ot7uCZ4j2nYwznb9HwdnqW/slqMr2en/EZSfkZ\nYGkaTREMYyrM4Ixosv0xcIf+xN5bK+0qLfYXT3xvAUh6WcwzekVbJydLvTr5ZqDP\nrufYDFETWxjoFGg2LyOVS33CWTHKJ8GBWJIkTE82rsYlhDgRuSj1mygTwg3zLaOX\nItoE3g1TAgMBAAECggEADChiuLhqmo2dKPHJFYa+wbB6SxCBTWvX6RwNQVWSFY6s\n/uOlRL1Y+DjejiZqR3/tulL9kJ71cXMMHvriiFx0PqtgYIj182Z/dPuJCGaaLW1S\nXi1UNSjo92YW6MwEV2YyJqH165J4I9CaTJ87vEuYxpufQ/uT/tq0KenRiIpJPfL+\nO/WuTeLSEOn/bFD8J2Crv5Y4hb+aERsreQtJyEDdOjTXRkkgsq3HMqFc5/B9yv/F\nADHdAXOrPNlzAgARb7gu6ixpXRj6gOu8M4knMU1ol23skXCPHxRga9uMkq+/zMRw\n+sIOaJT8ynx9eQLyrWrvzqaq8/PRUApaBeHcp6EN6QKBgQDmos4hmwqwvankd5Xg\nyKsY1627Nldkd1o20ncvWN74QwQMBVXqXo8DgXcvBqYcsMjT/leCVY36+8noePMa\n8njP9NSkLCMk/eLttuJXrpF+kkyFPMzf1s1Ql0IusMD/EEXsPhgViv3/5J84+UnM\nwgdsuyUMMv9nbWN+vj2jpbeGGwKBgQDTUd4saBxLqffSB3TS6kLR50+iHrXozPbZ\nf2ooqqqdK87IyhDL86mgLEuLo5I/pxcjKg0/LwhjZRXNY0vqKerhFdM6iU+BVDmB\nSgnRzGflq4HB0ZqV4d/2rhIXPPavDMVf6LsMPpGkxkDbD3lEs61g6KPTb+C9Q/uV\noz9ctvHpKQKBgCsU6lBYt8yAAUZOGE8e7Ob9EtTPt89qhA2NjvnnLe9OBWmBbaUT\n+L785hiAs3LUiw8eiZYtCRKDChpEzZSRCoQ+BaKNJBt62XLyIKGkWEU+atDQpKyD\nYWLWfmReXA7JKWaRysnrZrrwJ9XqqyB2dhCXfLokpJTbWCSKwNTa1cdVAoGBAMGA\nZswM7VQPqIDnGP+FSXiBsfbG3lX1UViqBqCEXsSa97f+59CKJ1onFWohdurYayRk\n/kpMHAc/6e3vrfUXOx+u54Pjdiz73chY7pLw9HZnTOMYts/mTDnK/X/P8Ccsr5N6\nPcUhiiXy8DJngej6CpoBjPowqP9GQBquqHeSggO5AoGAEQ8976sj98gfI2+Hapnj\nQi9aaACJapGvS0cE/bMdzt6WO+qn45OhF+JEdE+qBitO2n1+8DudN3DqTXLIUGZe\nyfQ6WS/v0pYfpXkumwGxXr1InkthnwjEy5bf4bweC1UM8G0vshfxpfBe1AlR3ZCM\nbe5jLjLBqlqGZchxqgVOlYA=\n-----END PRIVATE KEY-----\n",
-    "client_email": "firebase-adminsdk-z8lt7@mac-signature-pad.iam.gserviceaccount.com",
-    "client_id": "106111205757526743830",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-z8lt7%40mac-signature-pad.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
-  };
 }

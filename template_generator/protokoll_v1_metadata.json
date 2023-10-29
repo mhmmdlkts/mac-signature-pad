@@ -1,4 +1,4 @@
-const Map<String, List<Map<String, dynamic>>> protokollV1 = {
+{
   "name": [
     {
       "x": 217.4179634409178,
@@ -1059,4 +1059,4 @@ const Map<String, List<Map<String, dynamic>>> protokollV1 = {
       "page": 1
     }
   ]
-};
+}

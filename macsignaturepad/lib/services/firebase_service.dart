@@ -7,7 +7,7 @@ import 'init_service.dart';
 
 class FirebaseService {
   static const bool useEmulator = false;
-  static const firebaseProjectName = 'mac-signature-pad';
+  static const firebaseProjectName = 'mac-signature';
   static const functionLocation = 'europe-west1';
   static const localHostString = '127.0.0.1';
   static const authPort = 9099;

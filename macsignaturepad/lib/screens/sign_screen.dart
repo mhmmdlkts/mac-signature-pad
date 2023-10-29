@@ -27,8 +27,6 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
 
   late final AnimationController doneController;
   bool showDone = false;
-  String urlBeratungsprotokoll = 'https://firebasestorage.googleapis.com/v0/b/mac-signature-pad.appspot.com/o/beratungsprotokoll.pdf?alt=media&token=ff34f938-25c1-43b1-a5b9-b4610da5d5aa';
-  String urlVollmacht = 'https://firebasestorage.googleapis.com/v0/b/mac-signature-pad.appspot.com/o/vollmacht_v1.pdf?alt=media&token=dd18d5be-5ada-43af-a860-b36caa0c7156';
   bool get isDrowen => control.isFilled;
   double padding = 20;
   double paddingBetweenPdfs = 40;
@@ -90,10 +88,10 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
   Future sendSignature() async {
     String signature = const Base64Encoder().convert(rawImageFit.value!.buffer.asUint8List());
 
-    Uint8List vollmachtPdf = await PdfService.createBeratungsprotokolPDF(customer: customer!, signature: signature, version: currentBprotokollVersion);
+    Uint8List vollmachtPdf = await PdfService.createVollmachtPDF(customer: customer!, signature: signature, version: currentVollmachtVersion);
     String vollmachtPdfUrl = await StorageService.uploadPdf(vollmachtPdf, customer!.id, 'vollmacht_$currentVollmachtVersion.pdf');
     showBadge['vollmacht']!.value = 2;
-    Uint8List bprotokollPdf = await PdfService.createVollmachtPDF(customer: customer!, signature: signature, version: currentVollmachtVersion);
+    Uint8List bprotokollPdf = await PdfService.createBeratungsprotokolPDF(customer: customer!, signature: signature, version: currentBprotokollVersion);
     String bprotokollPdfUrl = await StorageService.uploadPdf(bprotokollPdf, customer!.id, 'bprotokoll_$currentBprotokollVersion.pdf');
     showBadge['beratungsprotokoll']!.value = 2;
 

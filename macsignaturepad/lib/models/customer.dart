@@ -22,6 +22,7 @@ class Customer {
   late String street;
   late Timestamp birthdate;
   late String phone;
+  Timestamp? nextTermin;
   Timestamp? smsSentTime;
   Timestamp? emailSentTime;
   String? lastSignatureId;
@@ -40,6 +41,7 @@ class Customer {
     required String city,
     required String street,
     required String phone,
+    Timestamp? nextTermin,
     String? email,
     String? uid,
     String? stnr,
@@ -56,6 +58,7 @@ class Customer {
     phone: phone,
     email: email,
     uid: uid,
+    nextTermin: nextTermin,
     stnr: stnr,
     details: details,
     token: generateToken(),
@@ -75,6 +78,7 @@ class Customer {
     required this.ts,
     required this.phone,
     this.smsSentTime,
+    this.nextTermin,
     this.emailSentTime,
     this.lastSignatureId,
     this.email,
@@ -98,6 +102,7 @@ class Customer {
     Timestamp? smsSentTime = json['smsSentTime']==null?null:(json['smsSentTime'] is Timestamp ? json['smsSentTime'] : convertMapToTimestamp(json['smsSentTime']));
     Timestamp? emailSentTime = json['emailSentTime']==null?null:(json['emailSentTime'] is Timestamp ? json['emailSentTime'] : convertMapToTimestamp(json['emailSentTime']));
     Timestamp ts = json['ts'] is Timestamp ? json['ts'] : convertMapToTimestamp(json['ts']);
+    Timestamp? nextTermin = json['nextTermin']==null?null:(json['nextTermin'] is Timestamp ? json['nextTermin'] : convertMapToTimestamp(json['nextTermin']));
     List<ServiceDetails>? details = json['details'] == null ? null : List<ServiceDetails>.from(json['details'].map((x) => ServiceDetails.fromJson(x)));
     return Customer(
       id: id,
@@ -118,6 +123,7 @@ class Customer {
       stnr: json['stnr'],
       token: json['token'],
       details: details,
+      nextTermin: nextTermin,
       ts: ts,
     );
   }
@@ -156,6 +162,7 @@ class Customer {
     );
   }
 
+  String get readableNextTermin => nextTermin==null?'-':DateFormat('dd.MM.yyyy').format(nextTermin!.toDate());
   String get readableBirthdate => DateFormat('dd.MM.yyyy').format(birthdate.toDate());
   String get readableCreateTime => DateFormat('dd.MM.yyyy HH:mm').format(ts.toDate());
 
@@ -183,6 +190,7 @@ class Customer {
     'uid': uid,
     'stnr': stnr,
     'token': token,
+    'nextTermin': nextTermin,
     'details': details?.map((e) => e.toJson()).toList(),
   };
 

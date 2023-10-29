@@ -24,11 +24,11 @@ class ServiceDetails {
     if (notes == null || notes!.isEmpty) {
       switch (status) {
         case 0:
-          return 'Ja';
+          return 'Neuerlicher Termin gewünscht';
         case 1:
-          return 'Nein';
+          return 'Nicht gewünscht';
         case 2:
-          return 'Ändern';
+          return 'Zurzeit kein Interesse';
         default:
           return '';
       }

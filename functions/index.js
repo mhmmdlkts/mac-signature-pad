@@ -2,6 +2,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const config = require('./config');
+const mailTemplates = require('./mail_templates');
 const axios = require('axios');
 const cors = require('cors')({origin: 'https://macpad.kreiseck.com'});
 
@@ -70,19 +71,8 @@ function getSignUrl(token) {
 async function sendMail(customerId) {
     const customer = (await admin.firestore().collection('customers').doc(customerId).get()).data();
 
-    const mailOptions = {
-        from: config.email,
-        to: customer.email,
-        subject: 'Willkommen bei MAC!',
-        html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto;">
-            <h2 style="color: #333;">Vielen Dank für Ihre Registrierung!</h2>
-            <p style="color: #555; font-size: 16px;">Um fortzufahren und die Daten zu unterschreiben, klicken Sie bitte auf den folgenden Button:</p>
-            <a href="${getSignUrl(customer.token)}" style="display: inline-block; padding: 10px 20px; color: white; background-color: #007BFF; text-decoration: none; border-radius: 4px; margin-top: 20px; font-weight: bold;">Daten Unterschreiben</a>
-            <p style="color: #777; font-size: 14px; margin-top: 30px;">Falls Sie Fragen haben, kontaktieren Sie uns bitte.</p>
-        </div>
-    `
-    };
+    const mailOptions = mailTemplates.getActionNeedMailOptions(config.email, customer.email, getSignUrl(customer.token));
+
     let check = false;
 
     await transporter.sendMail(mailOptions)
@@ -134,8 +124,8 @@ exports.signPds = functions.region('europe-west1').https.onRequest(async (reques
             bprotokollVersion: request.body.bprotokollVersion,
             bprotokollExp: bprotokollExp,
             vollmachtExp: vollmachtExp,
-            bprotokollPdfUrl: request.body.bprotokollPdfUrl,
             vollmachtPdfUrl: request.body.vollmachtPdfUrl,
+            bprotokollPdfUrl: request.body.bprotokollPdfUrl,
             signedAt: new Date(),
             advisorName: request.body.advisorName,
             advisorId: request.body.advisorId
@@ -146,9 +136,58 @@ exports.signPds = functions.region('europe-west1').https.onRequest(async (reques
             token: null
         })
 
+        if (customer.email != undefined || customer.email != null) {
+            await sendMailWithAttachments(request.body.vollmachtPdfUrl, request.body.vollmachtPdfUrl, customer.email);
+        }
+
         response.send("Hello from Firebase!");
     });
 });
+
+
+exports.weekdayJob = functions.pubsub.schedule('0 10 1 * *').timeZone('Europe/Berlin').onRun((context) => {
+
+    const customers = admin.firestore().collection('customers');
+    const now = new Date();
+    const bprotokollExp = new Date(now.getTime() + howManyDaysBeforeExpWarn * 24 * 60 * 60 * 1000);
+
+    customers.where('bprotokollExp', '<', bprotokollExp).get().then((snapshot) => {
+        snapshot.forEach((doc) => {
+            const customer = doc.data();
+            if (customer.email != undefined || customer.email != null) {
+                sendMail(doc.id);
+            }
+        });
+    });
+    return null;
+});
+
+async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail) {
+
+    const vollmachtResponse = await axios({
+        method: 'get',
+        url: vollmachtPdf,
+        responseType: 'arraybuffer',
+    });
+
+    const protokollResponse = await axios({
+        method: 'get',
+        url: protokollPdf,
+        responseType: 'arraybuffer',
+    });
+
+    const mailOptions = mailTemplates.getAfterSignedMailOption(config.email, customerEmail, vollmachtResponse.data, protokollResponse.data);
+
+    // E-Mail senden
+    await transporter.sendMail(mailOptions)
+        .then(() => {
+            console.log('Neue Willkommens-E-Mail gesendet an:', customerEmail);
+        })
+        .catch((error) => {
+            console.error('Es gab einen Fehler beim Senden der E-Mail:', error);
+        });
+}
+
 
 exports.getUserData = functions.region('europe-west1').https.onRequest(async (request, response) => {
     return cors(request, response, async () => {
@@ -182,7 +221,7 @@ exports.sendCustomerNotification = functions.region('europe-west1').https.onRequ
         const requiredFields = ['customerId', 'token', 'email', 'sms'];
 
         for (const field of requiredFields) {
-            if (!request.body[field]) {
+            if (request.body[field] == undefined || request.body[field] == null) {
                 console.log(`Missing ${field} field`)
                 response.status(400).send(`Missing ${field} field`);
                 return;
@@ -200,7 +239,7 @@ exports.sendCustomerNotification = functions.region('europe-west1').https.onRequ
             return;
         }
 
-        const customer = (await admin.firestore().collection('customers').doc(request.body.customerId).get()).data();
+        // const customer = (await admin.firestore().collection('customers').doc(request.body.customerId).get()).data();
         await admin.firestore().collection('customers').doc(request.body.customerId).update({
             token: request.body.token
         });

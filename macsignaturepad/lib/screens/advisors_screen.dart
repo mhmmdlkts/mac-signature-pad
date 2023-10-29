@@ -18,6 +18,7 @@ class AdvisorsScreen extends StatefulWidget {
 class _AdvisorsScreenState extends State<AdvisorsScreen> {
   List<Advisor> get advisors => AdvisorService.allAdvisors;
   bool _isLoading = true;
+  bool isRemoving = false;
 
   @override
   void initState() {
@@ -69,8 +70,23 @@ class _AdvisorsScreenState extends State<AdvisorsScreen> {
           final advisor = advisors[index];
           return ListTile(
             title: Text(advisor.name),
-            subtitle: Text('Email: ${advisor.email}'),
-            trailing: Text('Admin: ${advisor.isAdmin ? 'Ja' : 'Nein'}'),
+            subtitle: Text('${advisor.email}'),
+            trailing: Row(
+              children: [
+                Text('Admin: ${advisor.isAdmin ? 'Ja' : 'Nein'}'),
+                IconButton(
+                  onPressed: isRemoving?null:() async {
+                    setState(() {
+                      isRemoving = true;
+                    });
+                    await AdvisorService.removeAdvisor(advisor);
+                    setState(() {
+                      isRemoving = false;
+                    });
+                  },
+                  icon: Icon(Icons.delete))
+              ],
+            ),
           );
         },
       ),

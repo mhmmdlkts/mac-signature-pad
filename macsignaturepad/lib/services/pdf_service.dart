@@ -42,6 +42,14 @@ class PdfService {
         'val': customer.readableBirthdate,
         'type': 'text',
       },
+      'next_termin': {
+        'val': customer.readableNextTermin,
+        'type': 'text',
+      },
+      'advisor_name': {
+        'val': customer.advisorName,
+        'type': 'text',
+      },
       'signature_name': {
         'val': '${customer.name} ${customer.surname}',
         'type': 'text',
@@ -72,28 +80,28 @@ class PdfService {
     };
 
     for (var element in customer.details??[]) {
-      if (true || element.status == 0) {
+      if (element.status == 0) {
         dataMap['${element.code}-yes'] = {
           'val': 'x',
           'type': 'text',
           'align': 'center'
         };
       }
-      if (true || element.status == 1) {
+      if (element.status == 1) {
         dataMap['${element.code}-no'] = {
           'val': 'x',
           'type': 'text',
           'align': 'center'
         };
       }
-      if (true || element.status == 2) {
+      if (element.status == 2) {
         dataMap['${element.code}-change'] = {
           'val': 'x',
           'type': 'text',
           'align': 'center'
         };
       }
-      if (true || element.notes != null && element.notes!.isNotEmpty) {
+      if (element.notes != null && element.notes!.isNotEmpty) {
         dataMap['${element.code}-note'] = {
           'val': element.notes??'Test Note',
           'type': 'text',

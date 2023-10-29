@@ -39,4 +39,12 @@ class AdvisorService {
     await advisor.push();
   }
 
+  static Future removeAdvisor(Advisor advisorToDelete) async {
+    if (!isAdmin || advisor!.id == advisorToDelete.id) {
+      return;
+    }
+    await FirestorePathsService.getAdvisorDoc(advisorId: advisorToDelete.id).delete();
+    allAdvisors.remove(advisorToDelete);
+  }
+
 }
