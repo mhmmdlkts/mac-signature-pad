@@ -6,11 +6,12 @@ import 'package:intl/intl.dart';
 import 'package:macsignaturepad/models/service_details.dart';
 import 'package:macsignaturepad/models/signature.dart';
 import 'package:macsignaturepad/services/customer_service.dart';
+import 'package:macsignaturepad/services/sms_service.dart';
 
 import '../services/advisor_service.dart';
 import '../services/firestore_paths_service.dart';
 
-class Customer {
+class Customer implements Comparable {
   late String id;
   late Timestamp ts;
   late String advisorId;
@@ -210,5 +211,19 @@ class Customer {
       email: true,
       sms: false,
     );
+  }
+
+  @override
+  int compareTo(other) {
+    if (lastSignature != null && other.lastSignature == null) {
+      return 1;
+    }
+    if (lastSignature == null && other.lastSignature != null) {
+      return -1;
+    }
+    if (lastSignature != null && other.lastSignature != null) {
+      return lastSignature!.compareTo(other.lastSignature!);
+    }
+    return ts.compareTo(other.ts);
   }
 }

@@ -7,7 +7,7 @@ import 'firestore_paths_service.dart';
 
 class CustomerService {
   static final List<Customer> customers = [];
-  static Map<int, Function> _listeners = {};
+  static final Map<int, Function> _listeners = {};
 
   static Future initCustomers({required int id, required Function function}) async {
     _listeners[id] = function;
@@ -19,10 +19,13 @@ class CustomerService {
       customers.add(customer);
     });
     List<Future> futures = [];
+
     customers.forEach((customer) {
       futures.add(customer.initLastSignature());
     });
+
     await Future.wait(futures);
+    customers.sort();
   }
 
   static Future notifyListeners() async {
@@ -54,9 +57,13 @@ class CustomerService {
     }
   }
 
-  static Future addNewCustomer(Customer customer) async {
+  static Future addNewCustomer(Customer customer, {bool sms = false}) async {
     await customer.push();
     customers.add(customer);
+    customers.sort();
+    if (sms) {
+      await sendNotificationToCustomer(customer: customer, email: false, sms: true);
+    }
     notifyListeners();
   }
 

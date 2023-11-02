@@ -72,20 +72,21 @@ class _AdvisorsScreenState extends State<AdvisorsScreen> {
             title: Text(advisor.name),
             subtitle: Text('${advisor.email}'),
             trailing: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text('Admin: ${advisor.isAdmin ? 'Ja' : 'Nein'}'),
                 IconButton(
-                  onPressed: isRemoving?null:() async {
-                    setState(() {
-                      isRemoving = true;
-                    });
-                    await AdvisorService.removeAdvisor(advisor);
-                    setState(() {
-                      isRemoving = false;
-                    });
-                  },
-                  icon: Icon(Icons.delete))
-              ],
+                onPressed: isRemoving?null:() async {
+                  setState(() {
+                    isRemoving = true;
+                  });
+                  await AdvisorService.removeAdvisor(advisor);
+                  setState(() {
+                    isRemoving = false;
+                  });
+                },
+                icon: Icon(Icons.delete))
+            ],
             ),
           );
         },

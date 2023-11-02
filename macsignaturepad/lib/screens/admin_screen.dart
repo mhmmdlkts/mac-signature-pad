@@ -23,6 +23,7 @@ class _AdminScreenState extends State<AdminScreen> {
   String query = '';
 
   List<Customer> getCustomers() {
+    return CustomerService.customers;
     return CustomerService.customers.where((element) {
       if (query == '') {
         return true;
@@ -145,28 +146,28 @@ class _AdminScreenState extends State<AdminScreen> {
              Row(
                children: [
                  Material(
+                   borderRadius: BorderRadius.circular(8),
+                   color: Colors.grey[300],
+                   child: InkWell(
                      borderRadius: BorderRadius.circular(8),
-                     color: Colors.grey[300],
-                     child: InkWell(
-                       borderRadius: BorderRadius.circular(8),
-                       onTap: selectedCustomer.value!.email == null?null:() async {
-                         await customer.sendEmail();
-                         selectedCustomer.notifyListeners();
-                       },
-                       child: Container(
-                           padding: EdgeInsets.all(8),
-                           child: const  Column(
-                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                             children: [
-                               Icon(Icons.email, size: 20,),
-                             ],
-                           )
-                       ),
-                     )
+                     onTap: selectedCustomer.value!.email == null?null:() async {
+                       await customer.sendEmail();
+                       selectedCustomer.notifyListeners();
+                     },
+                     child: Container(
+                         padding: EdgeInsets.all(8),
+                         child: const  Column(
+                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                           children: [
+                             Icon(Icons.email, size: 20,),
+                           ],
+                         )
+                     ),
+                   )
                  ),
                  Container(width: 10),
 
-                 /*Material(
+                 Material(
                      borderRadius: BorderRadius.circular(8),
                      color: Colors.grey[300],
                      child: InkWell(
@@ -185,7 +186,7 @@ class _AdminScreenState extends State<AdminScreen> {
                        ),
                      )
                  ),
-                 Container(width: 10),*/
+                 Container(width: 10),
                  Material(
                      borderRadius: BorderRadius.circular(8),
                      color: Colors.grey[300],
@@ -267,7 +268,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   ],
                 ),
                 if (customer.lastSignature != null)
-                Row(
+                Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Material(
@@ -282,10 +283,10 @@ class _AdminScreenState extends State<AdminScreen> {
                           openPdf(customer.lastSignature!.vollmachtPdfUrl);
                         },
                         child: Container(
-                            width: 100,
-                            height: 80,
+                            width: 120,
+                            height: 50,
                             padding: EdgeInsets.all(10),
-                            child:const  Column(
+                            child:const  Row (
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
                                 Text('Vollmacht', overflow: TextOverflow.fade,),
@@ -295,7 +296,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         ),
                       ),
                     ),
-                    Container(width: 10),
+                    Container(height: 10),
                     Material(
                       borderRadius: BorderRadius.circular(8),
                       color: Colors.grey[300],
@@ -308,10 +309,10 @@ class _AdminScreenState extends State<AdminScreen> {
                           openPdf(customer.lastSignature!.bprotokollPdfUrl);
                         },
                         child: Container(
-                            width: 100,
-                            height: 80,
+                            width: 120,
+                            height: 50,
                             padding: EdgeInsets.all(10),
-                            child: const Column(
+                            child: const Row (
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
                                 Text('Protokoll',),

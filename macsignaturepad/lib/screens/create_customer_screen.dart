@@ -23,6 +23,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   List<Customer> get customers => CustomerService.customers;
   bool _isLoading = false ;
   bool isCompany = false;
+  bool _sendSms = false;
+  bool _sendEmail = true;
   final _formKey = GlobalKey<FormState>();
   String _name = '';
   String _surname = '';
@@ -81,6 +83,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
           nextTermin: _nextTermin,
           details: _insuranceOptions.values.expand((element) => element).toList(),
         ),
+        sms: _sendSms
       );
       Navigator.pop(context);
     }
@@ -317,10 +320,12 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   onPressed: () {
                     setState(() {
                       _insuranceOptions.forEach((key, value) {
-                        value.forEach((element) {
-                          if (element.status == null) {
-                            element.status = 0;
-                          }
+                        setState(() {
+                          value.forEach((element) {
+                            if (element.status == null) {
+                              element.status = 0;
+                            }
+                          });
                         });
                       });
                     });
@@ -331,10 +336,12 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   onPressed: () {
                     setState(() {
                       _insuranceOptions.forEach((key, value) {
-                        value.forEach((element) {
-                          if (element.status == null) {
-                            element.status = 1;
-                          }
+                        setState(() {
+                          value.forEach((element) {
+                            if (element.status == null) {
+                              element.status = 1;
+                            }
+                          });
                         });
                       });
                     });
@@ -345,10 +352,12 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   onPressed: () {
                     setState(() {
                       _insuranceOptions.forEach((key, value) {
-                        value.forEach((element) {
-                          if (element.status == null) {
-                            element.status = 2;
-                          }
+                        setState(() {
+                          value.forEach((element) {
+                            if (element.status == null) {
+                              element.status = 2;
+                            }
+                          });
                         });
                       });
                     });
@@ -386,6 +395,35 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
               ],
             ),
             Container(height: 10),
+            Row(
+              children: [
+                Container(height: 10,),
+                Row(
+                  children: [
+                    Checkbox(
+                        value: _sendEmail,
+                        onChanged: null
+                    ),
+                    Icon(Icons.email),
+                  ],
+                ),
+                Container(width: 30,),
+                Row(
+                  children: [
+                    Checkbox(
+                        value: _sendSms,
+                        onChanged: (val) {
+                          setState(() {
+                            _sendSms = val??false;
+                          });
+                        }
+                    ),
+                    Icon(Icons.perm_phone_msg),
+                  ],
+                ),
+                Container(height: 10,),
+              ],
+            ),
             ElevatedButton(
               onPressed: _isLoading?null:_saveForm,
               child: Text('Speichern'),

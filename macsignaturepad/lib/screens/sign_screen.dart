@@ -128,71 +128,118 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    Orientation currentOrientation = MediaQuery
+        .of(context)
+        .orientation;
+    if (currentOrientation == Orientation.landscape) {
+      return Scaffold(
+        backgroundColor: SignScreen.backgroundColor,
+        body: SafeArea(
+            minimum: EdgeInsets.all(padding),
+            child: Center(
+              child: _signPad(),
+            )
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: SignScreen.backgroundColor,
       body: WillPopScope(
-        onWillPop: () async => false,
-        child: showDone?Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Lottie.asset('assets/done.json', width: 200, controller: doneController, repeat: false, onLoaded: (composition) {
-                doneController..duration = composition.duration..forward().whenComplete(() {
-                  doneController.reset();
-                  Navigator.pushReplacementNamed(context, '/');
-                });
-              },),
-              Container(height: 20),
-              Text('Vielen Dank', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-            ],
-          ),
-        ):SafeArea(
-          minimum: EdgeInsets.all(padding),
-          child:   Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: getWidth),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    'MAC Agentur',
-                    style: TextStyle(
-                      color: Colors.black.withOpacity(0.85),
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Container(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: pdfs.map((e) => _pdfWidget(e, bottom: 7, right: 7)).toList(),
-                  ),
-                  Expanded(
-                    child: Container(
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 5),
-                    child: Text(
-                      "* Mit Ihrer Unterschrift bestätigen und akzeptieren Sie, dass die Angaben in den Dokumenten Vollmacht und Beratungsprotokoll korrekt und vollständig sind.",
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.black,
-                        fontWeight: FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                  Container(height: 15),
-                  _signPad(),
-                  Container(height: 20),
-                  _customSignButton(),
-                ],
-              ),
+          onWillPop: () async => false,
+          child: showDone ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Lottie.asset('assets/done.json', width: 200,
+                  controller: doneController,
+                  repeat: false,
+                  onLoaded: (composition) {
+                    doneController
+                      ..duration = composition.duration
+                      ..forward().whenComplete(() {
+                        doneController.reset();
+                        Navigator.pushReplacementNamed(context, '/');
+                      });
+                  },),
+                Container(height: 20),
+                Text('Vielen Dank',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center),
+              ],
             ),
+          ) : ValueListenableBuilder(
+            valueListenable: signLoading,
+            builder: (context, data, child) {
+              return Stack(
+                children: [
+                  SafeArea(
+                    minimum: EdgeInsets.all(padding),
+                    child:   Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: getWidth),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                'MAC Agentur',
+                                style: TextStyle(
+                                  color: Colors.black.withOpacity(0.85),
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Container(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: pdfs.map((e) => _pdfWidget(e, bottom: 7, right: 7)).toList(),
+                              ),
+                              Expanded(
+                                child: Container(),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 5),
+                                child: Text(
+                                  "* Mit Ihrer Unterschrift bestätigen und akzeptieren Sie, dass die Angaben in den Dokumenten Vollmacht und Beratungsprotokoll korrekt und vollständig sind.",
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                              Container(height: 15),
+                              _signPad(),
+                              Container(height: 20),
+                              _customSignButton(),
+                            ],
+                          ),
+                        ),
+                      )
+                  ),
+                  if (signLoading.value || true)
+                    Positioned.fill(
+                      child: Container(
+                        color: SignScreen.backgroundColor.withOpacity(0.2),
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Center(
+                                child: CircularProgressIndicator(color: firstColor),
+                              ),
+                              Container(width:20),
+                              Text('Bitte warten...', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                ],
+              );
+            },
           )
-        )
       ),
     );
   }

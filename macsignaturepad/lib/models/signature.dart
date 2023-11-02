@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class Signature {
+class Signature implements Comparable {
   late String id;
   late String signature;
   late String advisorName;
@@ -54,5 +54,12 @@ class Signature {
     if (date == null || date.toDate().isBefore(DateTime.now())) return Colors.red;
     if (date.toDate().isBefore(DateTime.now().add(const Duration(days: 30)))) return Colors.orange;
     return Colors.green;
+  }
+
+  DateTime get expiresDate => vollmachtExp.toDate().isAfter(bprotokollExp.toDate())?vollmachtExp.toDate():bprotokollExp.toDate();
+
+  @override
+  int compareTo(other) {
+    return expiresDate.compareTo(other.expiresDate);
   }
 }

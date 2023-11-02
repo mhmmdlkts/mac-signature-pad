@@ -4,8 +4,8 @@ const nodemailer = require('nodemailer');
 const config = require('./config');
 const mailTemplates = require('./mail_templates');
 const axios = require('axios');
+const SMSAPI = require('smsapi');
 const cors = require('cors')({origin: 'https://macpad.kreiseck.com'});
-
 
 admin.initializeApp();
 
@@ -36,21 +36,25 @@ async function sendSms(customerId) {
     const customer = (await admin.firestore().collection('customers').doc(customerId).get()).data();
     const name = customer.name + customer.surname;
     const phone = customer.phone;
-    const auth = Buffer.from(`${config.TWILIO_ACCOUNT_SID}:${config.TWILIO_AUTH_TOKEN}`).toString('base64');
+
+    const url = 'https://api.smsapi.com/sms.do';
+    const senderName = 'MAC Agentur';
+    const messageContent = `Hallo ${name},\n\nvielen Dank für Ihre Registrierung bei MAC. Bitte unterschreiben Sie die Dokumente unter folgendem Link: ${getSignUrl(customer.token)}\n\nViele Grüße,\nIhr MAC-Team`;
 
     try {
-        const response = await axios.post(url, new URLSearchParams({
-            From: config.TWILIO_PHONE_NUMBER,
-            To: phone,
-            Body: 'Hallo ' + name + ',\n\nvielen Dank für Ihre Registrierung bei MAC. Bitte unterschreiben Sie die Dokumente unter folgendem Link: ' + getSignUrl(customer.token) + '\n\nViele Grüße,\nIhr MAC-Team'
-        }).toString(), {
-            headers: {
-                'Authorization': `Basic ${auth}`,
-                'Content-Type': 'application/x-www-form-urlencoded',
+        const response = await axios.get(url, {
+            params: {
+                // from: senderName,
+                to: phone,
+                message: messageContent,
+                format: 'json'
             },
+            headers: {
+                'Authorization': `Bearer ${config.SMS_API_KEY}`
+            }
         });
 
-        if (response.status === 201) {
+        if (response.status === 200) {
             await admin.firestore().collection('customers').doc(customerId).update({
                 smsSentTime: new Date()
             });
@@ -61,8 +65,8 @@ async function sendSms(customerId) {
     } catch (error) {
         console.log('Failed to send message: ', error);
     }
-
 }
+
 
 function getSignUrl(token) {
     return `https://macpad.kreiseck.com/?token=${token}#/sign`;
@@ -137,7 +141,7 @@ exports.signPds = functions.region('europe-west1').https.onRequest(async (reques
         })
 
         if (customer.email != undefined || customer.email != null) {
-            await sendMailWithAttachments(request.body.vollmachtPdfUrl, request.body.vollmachtPdfUrl, customer.email);
+            await sendMailWithAttachments(request.body.vollmachtPdfUrl, request.body.bprotokollPdfUrl, customer.email);
         }
 
         response.send("Hello from Firebase!");
@@ -248,6 +252,7 @@ exports.sendCustomerNotification = functions.region('europe-west1').https.onRequ
             await sendMail(request.body.customerId)
         }
         if (request.body.sms) {
+
             await sendSms(request.body.customerId)
         }
     });
