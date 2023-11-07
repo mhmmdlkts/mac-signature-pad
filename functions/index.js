@@ -4,8 +4,7 @@ const nodemailer = require('nodemailer');
 const config = require('./config');
 const mailTemplates = require('./mail_templates');
 const axios = require('axios');
-const SMSAPI = require('smsapi');
-const cors = require('cors')({origin: 'https://macpad.kreiseck.com'});
+const cors = require('cors')({origin: 'https://signature.mac-versicherung.at'});
 
 admin.initializeApp();
 
@@ -34,17 +33,17 @@ exports.onCustomerCreate = functions.region('europe-west1').firestore
 
 async function sendSms(customerId) {
     const customer = (await admin.firestore().collection('customers').doc(customerId).get()).data();
-    const name = customer.name + customer.surname;
+    const name = customer.name + " " + customer.surname;
     const phone = customer.phone;
 
     const url = 'https://api.smsapi.com/sms.do';
     const senderName = 'MAC Agentur';
-    const messageContent = `Hallo ${name},\n\nvielen Dank für Ihre Registrierung bei MAC. Bitte unterschreiben Sie die Dokumente unter folgendem Link: ${getSignUrl(customer.token)}\n\nViele Grüße,\nIhr MAC-Team`;
+    const messageContent = `Hallo ${name},\n\nvielen Dank für Ihre Registrierung bei MAC. Bitte unterschreiben Sie die Dokumente unter folgendem Link: ${getSignUrl(customer.token)}\n\nLiebe Grüße,\nIhr MAC-Team`;
 
     try {
         const response = await axios.get(url, {
             params: {
-                // from: senderName,
+                from: senderName,
                 to: phone,
                 message: messageContent,
                 format: 'json'
@@ -69,13 +68,13 @@ async function sendSms(customerId) {
 
 
 function getSignUrl(token) {
-    return `https://macpad.kreiseck.com/?token=${token}#/sign`;
+    return `https://signature.mac-versicherung.at/?token=${token}#/sign`;
 }
 
 async function sendMail(customerId) {
     const customer = (await admin.firestore().collection('customers').doc(customerId).get()).data();
 
-    const mailOptions = mailTemplates.getActionNeedMailOptions(config.email, customer.email, getSignUrl(customer.token));
+    const mailOptions = mailTemplates.getActionNeedMailOptions(config.email, customer.email, customer.name + " " + customer.surname, getSignUrl(customer.token));
 
     let check = false;
 
@@ -141,7 +140,7 @@ exports.signPds = functions.region('europe-west1').https.onRequest(async (reques
         })
 
         if (customer.email != undefined || customer.email != null) {
-            await sendMailWithAttachments(request.body.vollmachtPdfUrl, request.body.bprotokollPdfUrl, customer.email);
+            await sendMailWithAttachments(request.body.vollmachtPdfUrl, request.body.bprotokollPdfUrl, customer.email, customer.name + " " + customer.surname);
         }
 
         response.send("Hello from Firebase!");
@@ -166,7 +165,7 @@ exports.weekdayJob = functions.pubsub.schedule('0 10 1 * *').timeZone('Europe/Be
     return null;
 });
 
-async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail) {
+async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail, name) {
 
     const vollmachtResponse = await axios({
         method: 'get',
@@ -180,7 +179,7 @@ async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail
         responseType: 'arraybuffer',
     });
 
-    const mailOptions = mailTemplates.getAfterSignedMailOption(config.email, customerEmail, vollmachtResponse.data, protokollResponse.data);
+    const mailOptions = mailTemplates.getAfterSignedMailOption(config.email, customerEmail, name, vollmachtResponse.data, protokollResponse.data);
 
     // E-Mail senden
     await transporter.sendMail(mailOptions)

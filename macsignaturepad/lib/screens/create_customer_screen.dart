@@ -3,10 +3,10 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:macsignaturepad/models/service_details.dart';
 
-import 'package:macsignaturepad/services/advisor_service.dart';
 import 'package:macsignaturepad/services/all_services_service.dart';
 import 'package:macsignaturepad/services/customer_service.dart';
 import '../models/customer.dart';
@@ -38,6 +38,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   String _zip = '';
   String _city = '';
   String _street = '';
+  final ValueNotifier<String> _notesNotifier = ValueNotifier<String>('');
   final Map<String, List<ServiceDetails>> _insuranceOptions = AllServicesService.getNewMap();
 
   @override
@@ -455,8 +456,12 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(service.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          if (service.notes != null && service.notes!.isNotEmpty)
-            Text('(${service.notes})'),
+          ValueListenableBuilder(
+            valueListenable: _notesNotifier,
+            builder: (context, _, __) {
+              return Text(service.notes??'', style: TextStyle(fontSize: 12, color: Colors.grey));
+            },
+          ),
           Row(
             children: [
               Radio(
@@ -465,6 +470,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                 onChanged: (int? value) {
                   setState(() {
                     service.status = value!;
+                    service.notes = 'Neuerlicher Termin gewünscht';
                   });
                 },
               ),
@@ -476,6 +482,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                 onChanged: (int? value) {
                   setState(() {
                     service.status = value!;
+                    service.notes = 'Nicht gewünscht';
                   });
                 },
               ),
@@ -487,13 +494,33 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                 onChanged: (int? value) {
                   setState(() {
                     service.status = value!;
+                    service.notes = 'Zurzeit kein Interesse';
                   });
                 },
               ),
               Text('Ändern'),
             ],
           ),
-          Text(service.getNotes),
+          Row(
+            children: [
+              Expanded(child: TextField(
+                decoration: InputDecoration(
+                  labelText: 'Notizen',
+                  border: OutlineInputBorder(),
+                ),
+                controller: TextEditingController(text: service.notes),
+                onChanged: (value) {
+                  service.notes = value;
+                  _notesNotifier.notifyListeners();
+                },
+              )),
+              IconButton(onPressed: () {
+                setState(() {
+                  service.notes = '';
+                });
+              }, icon: Icon(Icons.clear))
+            ],
+          )
         ],
       ),
     );
