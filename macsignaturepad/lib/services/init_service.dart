@@ -10,8 +10,8 @@ class InitService {
       return;
     }
     isIniting = true;
+    await AdvisorService.initAdvisor();
     List<Future> toDo = [
-      AdvisorService.initAdvisor(),
       CustomerService.initCustomers(id: id, function: function)
     ];
     await Future.wait(toDo);

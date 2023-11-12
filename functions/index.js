@@ -14,9 +14,7 @@ const howManyDaysValidVollmacht = 365 * 3;
 const howManyDaysBeforeExpWarn = 45;
 
 let transporter = nodemailer.createTransport({
-    host: 'smtp.easyname.com',
-    port: 465, // Oder 465, je nach Ihrem SMTP-Server
-    secure: true, // true für 465, false für andere Ports
+    service: "Outlook365",
     auth: {
         user: config.email,
         pass: config.password
@@ -214,6 +212,35 @@ exports.getUserData = functions.region('europe-west1').https.onRequest(async (re
     });
 });
 
+
+exports.removeAdvisor = functions.region('europe-west1').https.onRequest(async (request, response) => {
+    return cors(request, response, async () => {
+        if (request.method !== 'POST') {
+            response.status(400).send('Invalid Request');
+            return;
+        }
+        const requiredFields = ['myId', 'idToDelete'];
+
+        for (const field of requiredFields) {
+            if (request.body[field] == undefined || request.body[field] == null) {
+                console.log(`Missing ${field} field`)
+                response.status(400).send(`Missing ${field} field`);
+                return;
+            }
+        }
+
+        const myId = request.body.myId;
+        const idToDelete = request.body.idToDelete;
+        const a = (await admin.firestore().collection('advisors').doc(myId).get()).data();
+        if (a == undefined || a == null || !a.role || a.role !== 'admin') {
+            response.status(400).send('Invalid Request');
+            return;
+        }
+        await admin.firestore().collection('advisors').doc(idToDelete).delete();
+        await admin.auth().deleteUser(idToDelete);
+        response.status(200).send('Success');
+    });
+});
 
 exports.sendCustomerNotification = functions.region('europe-west1').https.onRequest(async (request, response) => {
     return cors(request, response, async () => {

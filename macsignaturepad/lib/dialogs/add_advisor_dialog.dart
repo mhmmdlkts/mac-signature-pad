@@ -80,7 +80,7 @@ class _AddAdvisorDialogState extends State<AddAdvisorDialog> {
                       _isLoading = true;
                     });
 
-                    Advisor advisor = Advisor(name: _name, email: _email, phone: _phoneNumber, role: 'advisor');
+                    Advisor advisor = Advisor.create(name: _name, email: _email, phone: _phoneNumber, role: 'advisor');
 
                     await register(advisor);
 
@@ -117,7 +117,7 @@ class _AddAdvisorDialogState extends State<AddAdvisorDialog> {
 
       String newUid = userCredential.user!.uid;
 
-      Advisor advisor = Advisor(name: _name, email: _email, phone: _phoneNumber, role: 'advisor');
+      Advisor advisor = Advisor.create(name: _name, email: _email, phone: _phoneNumber, role: 'advisor');
       advisor.id = newUid;
 
       await AdvisorService.addNewAdvisor(advisor);

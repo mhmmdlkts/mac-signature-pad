@@ -23,9 +23,11 @@ class _AdminScreenState extends State<AdminScreen> {
   String query = '';
 
   List<Customer> getCustomers() {
-    return CustomerService.customers;
+    if (query.isEmpty) {
+      return CustomerService.customers;
+    }
     return CustomerService.customers.where((element) {
-      if (query == '') {
+      if (query.isEmpty) {
         return true;
       }
       return element.name.toLowerCase().contains(query.toLowerCase()) ||
@@ -76,58 +78,65 @@ class _AdminScreenState extends State<AdminScreen> {
       ),
       body: WillPopScope(
         onWillPop: () async => false,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      query = value;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Search',
-                    border: OutlineInputBorder(),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await CustomerService.initCustomers();
+            setState(() {});
+          },
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        query = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Search',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: EdgeInsets.only(bottom: 10),
-                child: ElevatedButton(
-                  onPressed: () async {
-                    await Navigator.pushNamed(context, '/admin/createCustomer');
-                  },
-                  child: Text('Neuen Kunden anlegen +'),
+                Container(
+                  padding: EdgeInsets.only(bottom: 10),
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/admin/createCustomer');
+                    },
+                    child: Text('Neuen Kunden anlegen +'),
+                  ),
                 ),
-              ),
-              Builder(
-                builder: (ctx) {
-                  List<Customer> customers = getCustomers();
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: customers.length,
-                    separatorBuilder: (context, index) => Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Divider(height: 0, color: Colors.black12),),
-                    itemBuilder: (context, index) {
-                      final customer = customers[index];
-                      return ValueListenableBuilder(
-                        valueListenable: selectedCustomer,
-                        builder: (context, value, child) {
-                          return InkWell(
-                              onTap: selectedCustomer.value==customer?null:() {
-                                selectedCustomer.value = customer;
-                              },
-                              child: singleCustomerRow(customer)
+                Builder(
+                    builder: (ctx) {
+                      List<Customer> customers = getCustomers();
+                      return ListView.separated(
+                        physics: NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: customers.length,
+                        separatorBuilder: (context, index) => Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Divider(height: 0, color: Colors.black12),),
+                        itemBuilder: (context, index) {
+                          final customer = customers[index];
+                          return ValueListenableBuilder(
+                            valueListenable: selectedCustomer,
+                            builder: (context, value, child) {
+                              return InkWell(
+                                  onTap: selectedCustomer.value==customer?null:() {
+                                    selectedCustomer.value = customer;
+                                  },
+                                  child: singleCustomerRow(customer)
+                              );
+                            },
                           );
                         },
                       );
-                    },
-                  );
-                }
-              ),
-              Container(height: 30),
-            ],
+                    }
+                ),
+                Container(height: 30),
+              ],
+            ),
           ),
         ),
       )
@@ -142,74 +151,6 @@ class _AdminScreenState extends State<AdminScreen> {
       children: [
         Row(
          children: [
-           if (selectedCustomer.value == customer)
-             Row(
-               children: [
-                 Material(
-                   borderRadius: BorderRadius.circular(8),
-                   color: Colors.grey[300],
-                   child: InkWell(
-                     borderRadius: BorderRadius.circular(8),
-                     onTap: selectedCustomer.value!.email == null?null:() async {
-                       await customer.sendEmail();
-                       selectedCustomer.notifyListeners();
-                     },
-                     child: Container(
-                         padding: EdgeInsets.all(8),
-                         child: const  Column(
-                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                           children: [
-                             Icon(Icons.email, size: 20,),
-                           ],
-                         )
-                     ),
-                   )
-                 ),
-                 Container(width: 10),
-
-                 Material(
-                     borderRadius: BorderRadius.circular(8),
-                     color: Colors.grey[300],
-                     child: InkWell(
-                       borderRadius: BorderRadius.circular(8),
-                       onTap: selectedCustomer.value!.phone == null?null:() {
-                         customer.sendSms();
-                       },
-                       child: Container(
-                           padding: EdgeInsets.all(8),
-                           child: const  Column(
-                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                             children: [
-                               Icon(Icons.perm_phone_msg, size: 20,),
-                             ],
-                           )
-                       ),
-                     )
-                 ),
-                 Container(width: 10),
-                 Material(
-                     borderRadius: BorderRadius.circular(8),
-                     color: Colors.grey[300],
-                     child: InkWell(
-                       borderRadius: BorderRadius.circular(8),
-                       onTap: () async {
-                         await customer.initLastSignature();
-                         selectedCustomer.notifyListeners();
-                       },
-                       child: Container(
-                           padding: EdgeInsets.all(8),
-                           child: const  Column(
-                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                             children: [
-                               Icon(Icons.refresh, size: 20,),
-                             ],
-                           )
-                       ),
-                     )
-                 ),
-                 Container(width: 10)
-               ],
-             ),
            const Column(
              mainAxisAlignment: MainAxisAlignment.center,
              crossAxisAlignment: CrossAxisAlignment.end,
@@ -238,6 +179,122 @@ class _AdminScreenState extends State<AdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (selectedCustomer.value == customer)
+            Container(
+              padding: EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Material(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[300],
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: selectedCustomer.value!.email == null?null:() async {
+                          await customer.sendEmail();
+                          selectedCustomer.notifyListeners();
+                        },
+                        child: Container(
+                            padding: EdgeInsets.all(8),
+                            child: const  Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Icon(Icons.email, size: 20,),
+                              ],
+                            )
+                        ),
+                      )
+                  ),
+                  Container(width: 10),
+
+                  Material(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[300],
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: selectedCustomer.value!.phone == null?null:() {
+                          customer.sendSms();
+                        },
+                        child: Container(
+                            padding: EdgeInsets.all(8),
+                            child: const  Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Icon(Icons.perm_phone_msg, size: 20,),
+                              ],
+                            )
+                        ),
+                      )
+                  ),
+                  Container(width: 10),
+                  Material(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[300],
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () async {
+                          await customer.initLastSignature();
+                          selectedCustomer.notifyListeners();
+                        },
+                        child: Container(
+                            padding: EdgeInsets.all(8),
+                            child: const  Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Icon(Icons.refresh, size: 20,),
+                              ],
+                            )
+                        ),
+                      )
+                  ),
+                  Expanded(child: Container()),
+                  Material(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[300],
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () async {
+                          bool val = await showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text('Kunden löschen'),
+                                content: Text('Soll der Kunde ${customer.name} ${customer.surname} wirklich gelöscht werden?'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text('Abbrechen'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                  TextButton(
+                                    child: Text('Löschen'),
+                                    onPressed: () async {
+                                      await CustomerService.removeCustomer(customer);
+                                      Navigator.of(context).pop(true);
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          if (val == true) {
+                            setState(() {});
+                          }
+                        },
+                        child: Container(
+                            padding: EdgeInsets.all(8),
+                            child: const  Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Icon(Icons.delete, size: 20,),
+                              ],
+                            )
+                        ),
+                      )
+                  ),
+                ],
+              ),
+            ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

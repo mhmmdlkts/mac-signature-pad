@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:macsignaturepad/models/service_details.dart';
 import 'package:macsignaturepad/models/signature.dart';
 import 'package:macsignaturepad/services/customer_service.dart';
-import 'package:macsignaturepad/services/sms_service.dart';
 
 import '../services/advisor_service.dart';
 import '../services/firestore_paths_service.dart';

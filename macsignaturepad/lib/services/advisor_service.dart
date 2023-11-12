@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 
 import '../models/advisor.dart';
 import '../models/customer.dart';
+import 'firebase_service.dart';
 import 'firestore_paths_service.dart';
 
 class AdvisorService {
@@ -13,9 +15,11 @@ class AdvisorService {
   static bool get isAdmin => _isInited && (advisor?.isAdmin??false);
 
   static Future initAdvisor() async {
+    print('initAdvisor');
     DocumentSnapshot snapshot = await FirestorePathsService.getAdvisorDoc().get();
-    advisor = Advisor.fromJson(snapshot.data() as Map<String, dynamic>);
+    advisor = Advisor.fromJson(snapshot.data() as Map<String, dynamic>, snapshot.id);
     _isInited = true;
+    print('AdvisorService.initAdvisor()' + advisor!.toJson().toString());
   }
 
   static Future initAllAdvisors() async {
@@ -23,7 +27,7 @@ class AdvisorService {
       return;
     }
     QuerySnapshot querySnapshot = await FirestorePathsService.getAdvisorCol().get();
-    allAdvisors = querySnapshot.docs.map((doc) => Advisor.fromJson(doc.data() as Map<String, dynamic>)).toList();
+    allAdvisors = querySnapshot.docs.map((doc) => Advisor.fromJson(doc.data() as Map<String, dynamic>, doc.id)).toList();
   }
 
   static Future setAdvisorRole(Advisor advisor, String newRole) async {
@@ -39,12 +43,26 @@ class AdvisorService {
     await advisor.push();
   }
 
+
   static Future removeAdvisor(Advisor advisorToDelete) async {
     if (!isAdmin || advisor!.id == advisorToDelete.id) {
       return;
     }
-    await FirestorePathsService.getAdvisorDoc(advisorId: advisorToDelete.id).delete();
-    allAdvisors.remove(advisorToDelete);
+
+    Response response = await Dio().post(
+      FirebaseService.getUri('removeAdvisor').toString(),
+      data: {
+        'myId': advisor!.id,
+        'idToDelete': advisorToDelete.id,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      allAdvisors.remove(advisorToDelete);
+      return true;
+    } else {
+      return false;
+    }
   }
 
 }

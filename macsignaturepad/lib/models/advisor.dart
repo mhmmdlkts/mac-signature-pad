@@ -10,16 +10,29 @@ class Advisor {
   String role;
 
   Advisor({
+    required this.id,
     required this.name,
     required this.email,
     required this.phone,
     required this.role,
-  }): assert(role == 'admin' || role == 'advisor') {
-    id = FirestorePathsService.getAdvisorCol().doc().id;
-  }
+  }): assert(role == 'admin' || role == 'advisor');
 
-  factory Advisor.fromJson(Map<String, dynamic> json) {
+  factory Advisor.create({
+    required String name,
+    required String email,
+    required String phone,
+    required String role,
+  }) => Advisor(
+    id: FirestorePathsService.getAdvisorCol().doc().id,
+    name: name,
+    email: email,
+    phone: phone,
+    role: role,
+  );
+
+  factory Advisor.fromJson(Map<String, dynamic> json, String id) {
     return Advisor(
+      id: id,
       name: json['name'],
       email: json['email'],
       role: json['role'],

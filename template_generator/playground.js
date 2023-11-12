@@ -28,7 +28,7 @@ async function doIt(fileName) {
         .catch(err => console.error('Fehler beim Erstellen des PDFs:', err));
 
     await createMetadata(fileName)
-    /await cleanPdf(fileName);
+    await cleanPdf(fileName);
 }
 
 async function cleanPdf(fileName) {

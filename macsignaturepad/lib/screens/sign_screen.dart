@@ -218,7 +218,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                         ),
                       )
                   ),
-                  if (signLoading.value || true)
+                  if (signLoading.value)
                     Positioned.fill(
                       child: Container(
                         color: SignScreen.backgroundColor.withOpacity(0.2),
@@ -229,8 +229,6 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                               Center(
                                 child: CircularProgressIndicator(color: firstColor),
                               ),
-                              Container(width:20),
-                              Text('Bitte warten...', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                             ],
                           ),
                         ),

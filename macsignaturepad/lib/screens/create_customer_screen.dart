@@ -86,7 +86,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
         ),
         sms: _sendSms
       );
-      Navigator.pop(context);
+
+      Navigator.pushReplacementNamed(context, '/admin');
     }
   }
 
