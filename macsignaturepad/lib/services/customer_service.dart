@@ -79,8 +79,10 @@ class CustomerService {
     await customer.push();
     customers.add(customer);
     customers.sort();
-    if (sms) {
-      await sendNotificationToCustomer(customer: customer, email: false, sms: true);
+    try {
+      await sendNotificationToCustomer(customer: customer, email: true, sms: sms);
+    } catch (e) {
+      print(e);
     }
     notifyListeners();
   }

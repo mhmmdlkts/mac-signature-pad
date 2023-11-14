@@ -5,6 +5,11 @@ const config = require('./config');
 const mailTemplates = require('./mail_templates');
 const axios = require('axios');
 const cors = require('cors')({origin: 'https://signature.mac-versicherung.at'});
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+
 
 admin.initializeApp();
 
@@ -20,6 +25,108 @@ let transporter = nodemailer.createTransport({
         pass: config.password
     }
 });
+
+exports.getPdf = functions.runWith({
+    timeoutSeconds: 540,
+    memory: '2GB'
+}).region('europe-west1').https.onRequest(async (request, response) => {
+
+    return cors(request, response, async () => {
+        if (request.method !== 'POST') {
+            response.status(400).send('Invalid Request');
+            return;
+        }
+        const requiredFields = ['token', 'pdf_name', 'customer_id'];
+
+        for (const field of requiredFields) {
+            if (!request.body[field]) {
+                console.log(`Missing ${field} field`)
+                response.status(400).send(`Missing ${field} field`);
+                return;
+            }
+        }
+
+        const customerDoc = admin.firestore().collection('customers').doc(request.body.customer_id)
+        const customer = (await customerDoc.get()).data();
+        if (customer==undefined || customer.token !== request.body.token) {
+            response.status(400).send('Invalid token');
+            return;
+        }
+
+        const now = getCurrentDateFormatted()
+        const pdf_name = request.body.pdf_name;
+        const signature = request.body.signature != null ? request.body.signature : '';
+        const readableNextTermin = customer.nextTermin!=null?getReadableDate(customer.nextTermin):'';
+        const placeholders = {
+            name: customer.name + " " + customer.surname,
+            phone_email: customer.phone + " / " + customer.email,
+            uid_stnr: customer.uid + " / " + customer.stnr,
+            birthdate: getReadableDate(customer.birthdate),
+            next_termin: readableNextTermin,
+            advisor_name: customer.advisorName,
+            signature_name: customer.name + " " + customer.surname,
+            city_date_customer: customer.city + ", " + now,
+            city_date_advisor: "Villach, " + now,
+            address: customer.zip + " " + customer.city + ", " + customer.street,
+            date: now,
+            signature: signature
+        }
+
+        const details = customer.details??[];
+        for (let i = 0; i < details.length; i++) {
+            const element = details[i];
+            placeholders[element.code+'-yes'] = element.status == 0?'x':'';
+            placeholders[element.code+'-no'] = element.status == 1?'x':'';
+            placeholders[element.code+'-change'] = element.status == 2?'x':'';
+            placeholders[element.code+'-note'] = element.notes??'';
+        }
+
+        try {
+            const url = 'https://europe-west1-mac-signature.cloudfunctions.net/createPdf';
+            const res = await axios.post(url, {
+                pdf_name: pdf_name,
+                placeholders: placeholders
+            });
+
+            if (res.status === 200) {
+                response.setHeader('Content-Type', 'application/json');
+                return response.status(200).send({
+                    base64Pdf: res.data,
+                });
+            } else {
+                console.log('Failed to send message');
+                return response.status(400).send('Failed to send message a');
+            }
+        } catch (error) {
+            console.log('Failed to send message: ', error);
+            return response.status(400).send('Failed to send message b ' + error);
+        }
+        return response.status(400).send('Failed to send message c');
+    });
+});
+
+function getCurrentDateFormatted() {
+    const today = new Date();
+    const day = today.getDate().toString().padStart(2, '0');
+    const month = (today.getMonth() + 1).toString().padStart(2, '0'); // Monate sind von 0-11
+    const year = today.getFullYear();
+
+    return `${day}.${month}.${year}`;
+}
+
+function getReadableDate(timestamp) {
+    // Konvertieren des Firestore Timestamps in ein JavaScript-Date-Objekt in UTC
+    const date = new Date((timestamp._seconds + 7200) * 1000);
+
+    // Manuelle Umwandlung in UTC
+    const utcDate = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+
+    const day = utcDate.getUTCDate().toString().padStart(2, '0');
+    const month = (utcDate.getUTCMonth() + 1).toString().padStart(2, '0');
+    const year = utcDate.getUTCFullYear();
+
+    return `${day}.${month}.${year}`;
+}
 
 
 exports.onCustomerCreate = functions.region('europe-west1').firestore
@@ -93,14 +200,14 @@ async function sendMail(customerId) {
     return
 }
 
-exports.signPds = functions.region('europe-west1').https.onRequest(async (request, response) => {
+exports.signPdfs = functions.region('europe-west1').https.onRequest(async (request, response) => {
 
     return cors(request, response, async () => {
         if (request.method !== 'POST') {
             response.status(400).send('Invalid Request');
             return;
         }
-        const requiredFields = ['token', 'userId', 'signature', 'vollmachtVersion', 'bprotokollVersion', 'bprotokollPdfUrl', 'vollmachtPdfUrl', 'advisorName', 'advisorId'];
+        const requiredFields = ['token', 'userId', 'signature'];
 
         for (const field of requiredFields) {
             if (!request.body[field]) {
@@ -119,17 +226,62 @@ exports.signPds = functions.region('europe-west1').https.onRequest(async (reques
 
         const bprotokollExp = new Date(Date.now() + howManyDaysValidBprotokoll * 24 * 60 * 60 * 1000);
         const vollmachtExp = new Date(Date.now() + howManyDaysValidVollmacht * 24 * 60 * 60 * 1000);
+
+        const versionProtokoll = 'v1';
+        const versionVollmacht = 'v1';
+
+        response.status(200).send('Success');
+
+        const vollmachtBase64 = await axios({
+            method: 'post',  url: 'https://europe-west1-mac-signature.cloudfunctions.net/getPdf',
+            headers: {'Content-Type': 'application/json'},
+            data : {
+                pdf_name: 'vollmacht_' + versionVollmacht,
+                token: request.body.token,
+                customer_id: request.body.userId,
+                signature: request.body.signature
+            }
+        });
+
+        const protokollBase64 = await axios({
+            method: 'post',  url: 'https://europe-west1-mac-signature.cloudfunctions.net/getPdf',
+            headers: {'Content-Type': 'application/json'},
+            data : JSON.stringify({
+                pdf_name: 'protokoll_' + versionProtokoll,
+                token: request.body.token,
+                customer_id: request.body.userId,
+                signature: request.body.signature
+            })
+        });
+
+        const tempFilePathVollmacht = path.join(os.tmpdir(), `vollmacht_${versionVollmacht}.pdf`);
+        await fs.promises.writeFile(tempFilePathVollmacht, Buffer.from(vollmachtBase64.data.base64Pdf, 'base64'));
+
+        // upload to firebase storage as pdf and get url
+        const vollmachtStorage = await admin.storage().bucket().upload(tempFilePathVollmacht, {
+            destination: `${request.body.userId}/pdfs/vollmacht_${versionVollmacht}.pdf` });
+        await vollmachtStorage[0].makePublic();
+        const vollmachtPdfUrl = vollmachtStorage[0].metadata.mediaLink;
+
+        const tempFilePathProtokoll = path.join(os.tmpdir(), `protokoll_${versionProtokoll}.pdf`);
+        await fs.promises.writeFile(tempFilePathProtokoll, Buffer.from(protokollBase64.data.base64Pdf, 'base64'));
+
+        const bprotokollStorage = await admin.storage().bucket().upload(tempFilePathProtokoll, {
+            destination: `${request.body.userId}/pdfs/protokoll_${versionProtokoll}.pdf` });
+        await bprotokollStorage[0].makePublic();
+        const bprotokollPdfUrl = bprotokollStorage[0].metadata.mediaLink;
+
         const docRef = await customerDoc.collection('signatures').add({
             signature: request.body.signature,
-            vollmachtVersion: request.body.vollmachtVersion,
-            bprotokollVersion: request.body.bprotokollVersion,
             bprotokollExp: bprotokollExp,
             vollmachtExp: vollmachtExp,
-            vollmachtPdfUrl: request.body.vollmachtPdfUrl,
-            bprotokollPdfUrl: request.body.bprotokollPdfUrl,
+            vollmachtPdfUrl: vollmachtPdfUrl,
+            bprotokollPdfUrl: bprotokollPdfUrl,
             signedAt: new Date(),
-            advisorName: request.body.advisorName,
-            advisorId: request.body.advisorId
+            advisorName: customer.advisorName,
+            advisorId: customer.advisorId,
+            vollmachtVersion: versionVollmacht,
+            bprotokollVersion: versionProtokoll,
         });
 
         await customerDoc.update({
@@ -138,10 +290,8 @@ exports.signPds = functions.region('europe-west1').https.onRequest(async (reques
         })
 
         if (customer.email != undefined || customer.email != null) {
-            await sendMailWithAttachments(request.body.vollmachtPdfUrl, request.body.bprotokollPdfUrl, customer.email, customer.name + " " + customer.surname);
+            await sendMailWithAttachments(vollmachtPdfUrl, bprotokollPdfUrl, customer.email, customer.name + " " + customer.surname);
         }
-
-        response.send("Hello from Firebase!");
     });
 });
 
@@ -281,5 +431,6 @@ exports.sendCustomerNotification = functions.region('europe-west1').https.onRequ
 
             await sendSms(request.body.customerId)
         }
+        response.status(200).send('Success');
     });
 })

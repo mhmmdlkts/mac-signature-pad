@@ -64,82 +64,60 @@ class _AdminScreenState extends State<AdminScreen> {
       return SplashScreen();
     }
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Kundenübersicht'),
-
-        actions: !AdvisorService.isAdmin?null:[
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () {
-              Navigator.pushNamed(context, '/admin/advisors');
-            },
-          ),
-        ],
-      ),
-      body: WillPopScope(
-        onWillPop: () async => false,
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await CustomerService.initCustomers();
-            setState(() {});
-          },
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        query = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Search',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      await Navigator.pushNamed(context, '/admin/createCustomer');
-                    },
-                    child: Text('Neuen Kunden anlegen +'),
-                  ),
-                ),
-                Builder(
-                    builder: (ctx) {
-                      List<Customer> customers = getCustomers();
-                      return ListView.separated(
-                        physics: NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: customers.length,
-                        separatorBuilder: (context, index) => Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Divider(height: 0, color: Colors.black12),),
-                        itemBuilder: (context, index) {
-                          final customer = customers[index];
-                          return ValueListenableBuilder(
-                            valueListenable: selectedCustomer,
-                            builder: (context, value, child) {
-                              return InkWell(
-                                  onTap: selectedCustomer.value==customer?null:() {
-                                    selectedCustomer.value = customer;
-                                  },
-                                  child: singleCustomerRow(customer)
-                              );
-                            },
-                          );
-                        },
-                      );
-                    }
-                ),
-                Container(height: 30),
-              ],
+      body: ListView(
+        children: [
+          appBar(),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              onChanged: (value) {
+                setState(() {
+                  query = value;
+                });
+              },
+              decoration: InputDecoration(
+                labelText: 'Search',
+                border: OutlineInputBorder(),
+              ),
             ),
           ),
-        ),
-      )
+          Container(
+            padding: EdgeInsets.only(bottom: 10),
+            child: ElevatedButton(
+              onPressed: () async {
+                await Navigator.pushNamed(context, '/admin/createCustomer');
+              },
+              child: Text('Neuen Kunden anlegen +'),
+            ),
+          ),
+          Builder(
+              builder: (ctx) {
+                List<Customer> customers = getCustomers();
+                return ListView.separated(
+                  physics: NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: customers.length,
+                  separatorBuilder: (context, index) => Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Divider(height: 0, color: Colors.black12),),
+                  itemBuilder: (context, index) {
+                    final customer = customers[index];
+                    return ValueListenableBuilder(
+                      valueListenable: selectedCustomer,
+                      builder: (context, value, child) {
+                        return InkWell(
+                            onTap: selectedCustomer.value==customer?null:() {
+                              selectedCustomer.value = customer;
+                            },
+                            child: singleCustomerRow(customer)
+                        );
+                      },
+                    );
+                  },
+                );
+              }
+          ),
+          Container(height: 30),
+        ],
+      ),
     );
   }
 
@@ -167,6 +145,46 @@ class _AdminScreenState extends State<AdminScreen> {
             Text(customer.readableExpVollmacht, style: TextStyle(color: customer.vollmachtExpiresDateColor),),
             Text(customer.readableExpBprotokoll, style: TextStyle(color: customer.bprotokollExpiresDateColor),),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget appBar() {
+    bool existButton = AdvisorService.isAdmin;
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row (
+            mainAxisAlignment: existButton?MainAxisAlignment.spaceBetween:MainAxisAlignment.center,
+            children: [
+              if (existButton)
+                const Opacity(
+                  opacity: 0,
+                  child: IconButton(
+                      icon: Icon(Icons.arrow_back),
+                      onPressed: null
+                  ),
+                ),
+              Text('Kundenübersicht', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              if (existButton)
+                IconButton(
+                  icon: Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/admin/advisors');
+                  },
+                )
+            ],
+          ),
+        ),
+        Positioned(
+          left: 5,
+          bottom: 5,
+          child: Text(
+            '${InitService.version}',
+            style: TextStyle(fontSize: 10),
+          )
         ),
       ],
     );
@@ -253,7 +271,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
                         onTap: () async {
-                          bool val = await showDialog(
+                          bool? val = await showDialog(
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(

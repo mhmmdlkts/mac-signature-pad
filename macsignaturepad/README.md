@@ -1,6 +1,6 @@
 # macsignaturepad
 
-A new Flutter project.
+Mac Signature Pad
 
 ## Getting Started
 

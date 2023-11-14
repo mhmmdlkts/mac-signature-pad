@@ -15,11 +15,9 @@ class AdvisorService {
   static bool get isAdmin => _isInited && (advisor?.isAdmin??false);
 
   static Future initAdvisor() async {
-    print('initAdvisor');
     DocumentSnapshot snapshot = await FirestorePathsService.getAdvisorDoc().get();
     advisor = Advisor.fromJson(snapshot.data() as Map<String, dynamic>, snapshot.id);
     _isInited = true;
-    print('AdvisorService.initAdvisor()' + advisor!.toJson().toString());
   }
 
   static Future initAllAdvisors() async {

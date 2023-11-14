@@ -104,6 +104,7 @@ class Customer implements Comparable {
     Timestamp ts = json['ts'] is Timestamp ? json['ts'] : convertMapToTimestamp(json['ts']);
     Timestamp? nextTermin = json['nextTermin']==null?null:(json['nextTermin'] is Timestamp ? json['nextTermin'] : convertMapToTimestamp(json['nextTermin']));
     List<ServiceDetails>? details = json['details'] == null ? null : List<ServiceDetails>.from(json['details'].map((x) => ServiceDetails.fromJson(x)));
+    String street = json['street']??(json['country']??''); // because of old customers
     return Customer(
       id: id,
       name: json['name'],
@@ -115,7 +116,7 @@ class Customer implements Comparable {
       birthdate: birthdate,
       zip: json['zip'],
       city: json['city'],
-      street: json['country'],
+      street: street,
       lastSignatureId: json['lastSignatureId'],
       smsSentTime: smsSentTime,
       emailSentTime: emailSentTime,
@@ -129,11 +130,15 @@ class Customer implements Comparable {
   }
 
   Future initLastSignature() async {
-    if (lastSignatureId == null || lastSignatureId!.isEmpty) return;
-    DocumentSnapshot doc = await FirestorePathsService.getSignatureDoc(signatureId: lastSignatureId!, customerId: id).get();
-    if (!doc.exists) return;
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    lastSignature = Signature.fromJson(data, doc.id);
+    try {
+      if (lastSignatureId == null || lastSignatureId!.isEmpty) return;
+      DocumentSnapshot doc = await FirestorePathsService.getSignatureDoc(signatureId: lastSignatureId!, customerId: id).get();
+      if (!doc.exists) return;
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      lastSignature = Signature.fromJson(data, doc.id);
+    } catch (e) {
+      print(e);
+    }
   }
 
   String get getReadableUid {
@@ -186,7 +191,7 @@ class Customer implements Comparable {
     'birthdate': birthdate,
     'zip': zip,
     'city': city,
-    'country': street,
+    'street': street,
     'uid': uid,
     'stnr': stnr,
     'token': token,

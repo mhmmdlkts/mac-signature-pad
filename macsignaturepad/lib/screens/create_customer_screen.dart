@@ -38,6 +38,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   String _zip = '';
   String _city = '';
   String _street = '';
+  String errorMessage = '';
   final ValueNotifier<String> _notesNotifier = ValueNotifier<String>('');
   final Map<String, List<ServiceDetails>> _insuranceOptions = AllServicesService.getNewMap();
 
@@ -69,25 +70,32 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
           element.notes = element.getNotes;
         });
       });
-      await CustomerService.addNewCustomer(
-        Customer.create(
-          name: _name,
-          surname: _surname,
-          phone: _countryCode + _phone,
-          email: _email,
-          birthdate: _birthdate!,
-          zip: _zip,
-          city: _city,
-          street: _street,
-          uid: _uid,
-          stnr: _stnr,
-          nextTermin: _nextTermin,
-          details: _insuranceOptions.values.expand((element) => element).toList(),
-        ),
-        sms: _sendSms
-      );
+      try {
+        await CustomerService.addNewCustomer(
+            Customer.create(
+              name: _name,
+              surname: _surname,
+              phone: _countryCode + _phone,
+              email: _email,
+              birthdate: _birthdate!,
+              zip: _zip,
+              city: _city,
+              street: _street,
+              uid: _uid,
+              stnr: _stnr,
+              nextTermin: _nextTermin,
+              details: _insuranceOptions.values.expand((element) => element).toList(),
+            ),
+            sms: _sendSms
+        );
 
-      Navigator.pushReplacementNamed(context, '/admin');
+        Navigator.pushReplacementNamed(context, '/admin');
+      } catch (error) {
+        setState(() {
+          _isLoading = false;
+          errorMessage = error.toString();
+        });
+      }
     }
   }
 
@@ -426,6 +434,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                 Container(height: 10,),
               ],
             ),
+            if (errorMessage.isNotEmpty)
+              Text(errorMessage, style: TextStyle(color: Colors.red)),
             ElevatedButton(
               onPressed: _isLoading?null:_saveForm,
               child: Text('Speichern'),

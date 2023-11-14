@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:macsignaturepad/decoration/colors.dart';
 import 'package:macsignaturepad/screens/sign_screen.dart';
 
+import '../services/init_service.dart';
+
 class NoSignatureScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -27,6 +29,14 @@ class NoSignatureScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          Positioned(
+            bottom: 5,
+            right: 5,
+            child: Text(
+              '${InitService.version}',
+              style: TextStyle(fontSize: 10),
             ),
           ),
           Positioned(

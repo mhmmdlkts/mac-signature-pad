@@ -12,6 +12,7 @@ import 'package:macsignaturepad/screens/pdf_viewer_screen.dart';
 import 'package:macsignaturepad/services/firebase_service.dart';
 import 'package:macsignaturepad/services/storage_service.dart';
 
+import '../services/init_service.dart';
 import '../services/pdf_service.dart';
 
 
@@ -26,10 +27,12 @@ class SignScreen extends StatefulWidget {
 class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateMixin{
 
   late final AnimationController doneController;
+
   bool showDone = false;
   bool get isDrowen => control.isFilled;
   double padding = 20;
   double paddingBetweenPdfs = 40;
+  ValueNotifier<String> errorMessage = ValueNotifier<String>('');
   ValueNotifier<bool> isSigning = ValueNotifier<bool>(false);
   ValueNotifier<ByteData?> rawImageFit = ValueNotifier<ByteData?>(null);
   ValueNotifier<bool> signLoading = ValueNotifier<bool>(false);
@@ -64,6 +67,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
 
     token = Uri.base.queryParameters["token"];
     if (token == null) {
+      showDone = true;
       Navigator.pushReplacementNamed(context, '/');
       return;
     } else {
@@ -74,49 +78,54 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
   }
 
   Future initToken(String token) async {
-    Response response = await Dio().get(
-      FirebaseService.getUri('getUserData').toString(),
-      queryParameters: {'token': token},
-    );
-    if (response.statusCode == 200) {
-      customer = Customer.fromJson(response.data, response.data['id']);
-    } else {
+    try {
+      Response response = await Dio().get(
+        FirebaseService.getUri('getUserData').toString(),
+        queryParameters: {'token': token},
+      );
+      if (response.statusCode == 200) {
+        customer = Customer.fromJson(response.data, response.data['id']);
+      } else {
+        setState(() {
+          showDone = true;
+        });
+        Navigator.pushReplacementNamed(context, '/');
+      }
+    } catch (e) {
+      setState(() {
+        showDone = true;
+      });
       Navigator.pushReplacementNamed(context, '/');
     }
   }
 
   Future sendSignature() async {
+    int counter = 0;
     String signature = const Base64Encoder().convert(rawImageFit.value!.buffer.asUint8List());
+    counter = 1;
+    try {
 
-    Uint8List vollmachtPdf = await PdfService.createVollmachtPDF(customer: customer!, signature: signature, version: currentVollmachtVersion);
-    String vollmachtPdfUrl = await StorageService.uploadPdf(vollmachtPdf, customer!.id, 'vollmacht_$currentVollmachtVersion.pdf');
-    showBadge['vollmacht']!.value = 2;
-    Uint8List bprotokollPdf = await PdfService.createBeratungsprotokolPDF(customer: customer!, signature: signature, version: currentBprotokollVersion);
-    String bprotokollPdfUrl = await StorageService.uploadPdf(bprotokollPdf, customer!.id, 'bprotokoll_$currentBprotokollVersion.pdf');
-    showBadge['beratungsprotokoll']!.value = 2;
+      Response response = await Dio().post(
+        FirebaseService.getUri('signPdfs').toString(),
+        data: {
+          'token': token,
+          'userId': customer!.id,
+          'signature': signature
+        },
+      );
 
+      print(response);
 
-    Response response = await Dio().post(
-      FirebaseService.getUri('signPds').toString(),
-      data: {
-        'token': token,
-        'userId': customer!.id,
-        'signature': signature,
-        'vollmachtVersion': currentVollmachtVersion,
-        'bprotokollVersion': currentBprotokollVersion,
-        'bprotokollPdfUrl': bprotokollPdfUrl,
-        'vollmachtPdfUrl': vollmachtPdfUrl,
-        'advisorId': customer!.advisorId,
-        'advisorName': customer!.advisorName,
-      },
-    );
+      if (response.statusCode == 200) {
+        setState(() {
+          showDone = true;
+        });
+      } else {
+        errorMessage.value = 'Fehler beim Unterschreiben: ${response.data} [f37-$counter]';
+      }
 
-    if (response.statusCode == 200) {
-      setState(() {
-        showDone = true;
-      });
-    } else {
-      print('Error: ${response.statusCode}');
+    } catch (e) {
+      errorMessage.value = 'Fehler beim Unterschreiben: $e [f36-$counter]';
     }
   }
 
@@ -182,13 +191,29 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                             crossAxisAlignment: CrossAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
-                              Text(
-                                'MAC Agentur',
-                                style: TextStyle(
-                                  color: Colors.black.withOpacity(0.85),
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              Stack(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'MAC Agentur',
+                                        style: TextStyle(
+                                          color: Colors.black.withOpacity(0.85),
+                                          fontSize: 30,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    child: Text(
+                                      '${InitService.version}',
+                                      style: TextStyle(fontSize: 10),
+                                    ),
+                                  )
+                                ],
                               ),
                               Container(height: 20),
                               Row(
@@ -197,6 +222,27 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                               ),
                               Expanded(
                                 child: Container(),
+                              ),
+                              ValueListenableBuilder(
+                                valueListenable: errorMessage,
+                                builder: (context, value, child) {
+                                  if (errorMessage.value.isEmpty) {
+                                    return Container();
+                                  }
+                                  return
+                                    Padding(
+                                      padding: EdgeInsets.only(left: 5, right: 5, bottom: 5),
+                                      child: Text(
+                                        errorMessage.value,
+                                        textAlign: TextAlign.left,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.redAccent,
+                                          fontWeight: FontWeight.normal,
+                                        ),
+                                      ),
+                                    );
+                                },
                               ),
                               Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 5),
@@ -488,24 +534,38 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
     if (customer == null) {
       return;
     }
-    String? signature = rawImageFit?.value!=null? (Base64Encoder().convert(rawImageFit.value!.buffer.asUint8List())):null;
-    Uint8List? pdf;
-    if (name.toLowerCase() == 'vollmacht') {
-      pdf = await PdfService.createVollmachtPDF(customer: customer!, signature: signature, version: currentVollmachtVersion);
-    } else if (name.toLowerCase() == 'beratungsprotokoll') {
-      pdf = await PdfService.createBeratungsprotokolPDF(customer: customer!, signature: signature, version: currentBprotokollVersion);
+    try {
+      String? signature = rawImageFit?.value!=null? (Base64Encoder().convert(rawImageFit.value!.buffer.asUint8List())):null;
+      Uint8List? pdf;
+
+      signLoading.value = true;
+      if (name.toLowerCase() == 'vollmacht') {
+        Map<String, dynamic> vollmachtPdfResult = await PdfService.createVollmachtPDF(customer: customer!, signature: signature, version: currentVollmachtVersion);
+        if (!vollmachtPdfResult["success"]) {
+          errorMessage.value = 'Fehler beim createVollmachtPDF: $e [f23-${vollmachtPdfResult["error"]}-${vollmachtPdfResult["counter"]}';
+          return;
+        }
+        pdf = vollmachtPdfResult["data"];
+      } else if (name.toLowerCase() == 'beratungsprotokoll') {
+        Map<String, dynamic> bprotokollPdfResult = await PdfService.createBeratungsprotokolPDF(customer: customer!, signature: signature, version: currentBprotokollVersion);
+        if (!bprotokollPdfResult["success"]) {
+          errorMessage.value = 'Fehler beim createBeratungsprotokolPDF: $e [f24-${bprotokollPdfResult["error"]}-${bprotokollPdfResult["counter"]}';
+          return;
+        }
+        pdf = bprotokollPdfResult["data"];
+      }
+      signLoading.value = false;
+      if (pdf == null) {
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => PdfViewerScreen(pdfBytes: pdf!),
+        ),
+      );
+    } catch (e) {
+      errorMessage.value = 'Fehler beim Öffnen des PDFs: $e [f36]';
     }
-
-
-
-    if (pdf == null) {
-      return;
-    }
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => PdfViewerScreen(pdfBytes: pdf!),
-      ),
-    );
   }
 }
 
