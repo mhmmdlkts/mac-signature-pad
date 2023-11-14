@@ -93,25 +93,31 @@ class _AdminScreenState extends State<AdminScreen> {
           Builder(
               builder: (ctx) {
                 List<Customer> customers = getCustomers();
-                return ListView.separated(
-                  physics: NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  itemCount: customers.length,
-                  separatorBuilder: (context, index) => Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Divider(height: 0, color: Colors.black12),),
-                  itemBuilder: (context, index) {
-                    final customer = customers[index];
-                    return ValueListenableBuilder(
-                      valueListenable: selectedCustomer,
-                      builder: (context, value, child) {
-                        return InkWell(
-                            onTap: selectedCustomer.value==customer?null:() {
-                              selectedCustomer.value = customer;
-                            },
-                            child: singleCustomerRow(customer)
-                        );
-                      },
-                    );
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    await CustomerService.initCustomers();
+                    setState(() {});
                   },
+                  child: ListView.separated(
+                    physics: NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: customers.length,
+                    separatorBuilder: (context, index) => Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Divider(height: 0, color: Colors.black12),),
+                    itemBuilder: (context, index) {
+                      final customer = customers[index];
+                      return ValueListenableBuilder(
+                        valueListenable: selectedCustomer,
+                        builder: (context, value, child) {
+                          return InkWell(
+                              onTap: selectedCustomer.value==customer?null:() {
+                                selectedCustomer.value = customer;
+                              },
+                              child: singleCustomerRow(customer)
+                          );
+                        },
+                      );
+                    },
+                  )
                 );
               }
           ),
@@ -250,7 +256,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
                         onTap: () async {
-                          await customer.initLastSignature();
+                          await selectedCustomer.value?.refresh();
                           selectedCustomer.notifyListeners();
                         },
                         child: Container(

@@ -230,4 +230,31 @@ class Customer implements Comparable {
     }
     return ts.compareTo(other.ts);
   }
+
+  Future refresh() async {
+    DocumentSnapshot doc = await FirestorePathsService.getCustomerDoc(customerId: id).get();
+    if (!doc.exists) return;
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    Customer customer = Customer.fromJson(data, doc.id);
+    this.name = customer.name;
+    this.surname = customer.surname;
+    this.phone = customer.phone;
+    this.email = customer.email;
+    this.advisorId = customer.advisorId;
+    this.advisorName = customer.advisorName;
+    this.ts = customer.ts;
+    this.birthdate = customer.birthdate;
+    this.zip = customer.zip;
+    this.city = customer.city;
+    this.street = customer.street;
+    this.uid = customer.uid;
+    this.stnr = customer.stnr;
+    this.token = customer.token;
+    this.nextTermin = customer.nextTermin;
+    this.details = customer.details;
+    this.lastSignatureId = customer.lastSignatureId;
+    this.smsSentTime = customer.smsSentTime;
+    this.emailSentTime = customer.emailSentTime;
+    await initLastSignature();
+  }
 }
