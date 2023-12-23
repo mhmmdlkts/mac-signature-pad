@@ -5,7 +5,7 @@ class AllServicesService {
     'Für mich und meine Familie': [
       ServiceDetails(code: 'fam-ableb', name: 'Ablebensvorsoge'),
       ServiceDetails(code: 'fam-alter', name: 'Alters-/Pensionsvorsoge'),
-      ServiceDetails(code: 'fam-krang', name: 'Krangenvorsorge'),
+      ServiceDetails(code: 'fam-krang', name: 'Krankenvorsorge'),
       ServiceDetails(code: 'fam-unfal', name: 'Unfallvorsorge'),
       ServiceDetails(code: 'fam-beruf', name: 'Berufsunfähigkeitsvorsoge'),
       ServiceDetails(code: 'fam-recht', name: 'Rechtsschutz'),
@@ -30,7 +30,7 @@ class AllServicesService {
       ServiceDetails(code: 'woh-tierh', name: 'Tierhalterhaftplicht'),
       ServiceDetails(code: 'woh-unbeb', name: 'Unbebaute Grundstücke'),
       ServiceDetails(code: 'woh-schlu', name: 'Schlüsselverlust'),
-      ServiceDetails(code: 'woh-sonst', name: 'Sonstiges'),
+      ServiceDetails(code: 'woh-sonst', name: 'Sonstiges / Betrieb'),
     ],
   };
 }

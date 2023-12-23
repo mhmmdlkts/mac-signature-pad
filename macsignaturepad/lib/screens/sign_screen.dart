@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:hand_signature/signature.dart';
@@ -10,7 +10,6 @@ import 'package:macsignaturepad/decoration/colors.dart';
 import 'package:macsignaturepad/models/customer.dart';
 import 'package:macsignaturepad/screens/pdf_viewer_screen.dart';
 import 'package:macsignaturepad/services/firebase_service.dart';
-import 'package:macsignaturepad/services/storage_service.dart';
 
 import '../services/init_service.dart';
 import '../services/pdf_service.dart';
@@ -89,13 +88,17 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
         setState(() {
           showDone = true;
         });
-        Navigator.pushReplacementNamed(context, '/');
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/');
+        }
       }
     } catch (e) {
       setState(() {
         showDone = true;
       });
-      Navigator.pushReplacementNamed(context, '/');
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/');
+      }
     }
   }
 
@@ -114,7 +117,9 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
         },
       );
 
-      print(response);
+      if (kDebugMode) {
+        print(response);
+      }
 
       if (response.statusCode == 200) {
         setState(() {
@@ -171,7 +176,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                       });
                   },),
                 Container(height: 20),
-                Text('Vielen Dank',
+                const Text('Vielen Dank',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center),
               ],
@@ -209,8 +214,8 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                                   Positioned(
                                     right: 0,
                                     child: Text(
-                                      '${InitService.version}',
-                                      style: TextStyle(fontSize: 10),
+                                      InitService.version,
+                                      style: const TextStyle(fontSize: 10),
                                     ),
                                   )
                                 ],
@@ -231,11 +236,11 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                                   }
                                   return
                                     Padding(
-                                      padding: EdgeInsets.only(left: 5, right: 5, bottom: 5),
+                                      padding: const EdgeInsets.only(left: 5, right: 5, bottom: 5),
                                       child: Text(
                                         errorMessage.value,
                                         textAlign: TextAlign.left,
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.redAccent,
                                           fontWeight: FontWeight.normal,
@@ -244,7 +249,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                                     );
                                 },
                               ),
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 5),
                                 child: Text(
                                   "* Mit Ihrer Unterschrift bestätigen und akzeptieren Sie, dass die Angaben in den Dokumenten Vollmacht und Beratungsprotokoll korrekt und vollständig sind.",
@@ -268,7 +273,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                     Positioned.fill(
                       child: Container(
                         color: SignScreen.backgroundColor.withOpacity(0.2),
-                        child: Center(
+                        child: const Center(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -296,7 +301,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
         valueListenable: signLoading,
         builder: (context, data, child) {
           bool isDisabled = rawImageFit.value==null||signLoading.value;
-          return Container(
+          return SizedBox(
               width: double.infinity,
               child: Material(
                   borderRadius: radius,
@@ -312,8 +317,8 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                         decoration: BoxDecoration(
                           borderRadius: radius,
                         ),
-                        padding: EdgeInsets.all(10),
-                        child: Text('Unterschreiben', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                        padding: const EdgeInsets.all(10),
+                        child: const Text('Unterschreiben', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                       )
                   )
               )
@@ -330,8 +335,6 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
 
     TextStyle style = TextStyle(color: Colors.black.withOpacity(0.75), fontSize: 16, fontWeight: FontWeight.bold);
     double cornerLength = width * (249/674);
-    double offset = 1;
-    double margin = 10;
     return Container(
       margin: EdgeInsets.symmetric(horizontal: (paddingBetweenPdfs - padding) / 2),
       width: width,
@@ -352,9 +355,9 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                   int badgeVal = showBadge[name.toLowerCase()]!.value;
                   if (badgeVal != 0) {
                     return Positioned(
-                      child: Lottie.asset(badgeVal==1?'assets/badge_grey.json':'assets/badge.json', width: 50),
                       bottom: -5,
                       right: 40,
+                      child: Lottie.asset(badgeVal==1?'assets/badge_grey.json':'assets/badge.json', width: 50),
                     );
                   }
                   return Container();
@@ -436,7 +439,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                       child: Stack(
                         children: <Widget>[
                           Container(
-                            constraints: BoxConstraints.expand(),
+                            constraints: const BoxConstraints.expand(),
                             child: HandSignature(
                               control: control,
                               width: 2,
@@ -479,7 +482,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                                     value.value = 0;
                                   });
                                 },
-                                icon: Icon(Icons.clear),
+                                icon: const Icon(Icons.clear),
                               )
                           );
                         }
@@ -492,22 +495,6 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
         )
     );
   }
-
-  Widget _getSignatureImage() => Container(
-      width: 50,
-      height: 25,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: Colors.black, width: 0.25),
-      ),
-      child: Center(
-          child: CustomPaint(
-            painter: DebugSignaturePainterCP(
-              control: control,
-            ),
-          ),
-      )
-  );
 
   Widget _buildScaledImageView() => Container(
     width: 50.0,
@@ -522,9 +509,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
         if (data == null) {
           return Container();
         } else {
-          return Container(
-            child: Image.memory(data.buffer.asUint8List()),
-          );
+          return Image.memory(data.buffer.asUint8List());
         }
       },
     ),
@@ -535,7 +520,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
       return;
     }
     try {
-      String? signature = rawImageFit?.value!=null? (Base64Encoder().convert(rawImageFit.value!.buffer.asUint8List())):null;
+      String? signature = rawImageFit.value!=null? (const Base64Encoder().convert(rawImageFit.value!.buffer.asUint8List())):null;
       Uint8List? pdf;
 
       signLoading.value = true;
@@ -558,11 +543,13 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
       if (pdf == null) {
         return;
       }
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => PdfViewerScreen(pdfBytes: pdf!),
-        ),
-      );
+      if (mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => PdfViewerScreen(pdfBytes: pdf!),
+          ),
+        );
+      }
     } catch (e) {
       errorMessage.value = 'Fehler beim Öffnen des PDFs: $e [f36]';
     }

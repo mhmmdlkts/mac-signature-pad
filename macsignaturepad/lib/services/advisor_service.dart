@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 
 import '../models/advisor.dart';
-import '../models/customer.dart';
 import 'firebase_service.dart';
 import 'firestore_paths_service.dart';
 
@@ -13,6 +12,7 @@ class AdvisorService {
   static List<Advisor> allAdvisors = [];
 
   static bool get isAdmin => _isInited && (advisor?.isAdmin??false);
+  static bool get isOffice => _isInited && (advisor?.isOffice??false);
 
   static Future initAdvisor() async {
     DocumentSnapshot snapshot = await FirestorePathsService.getAdvisorDoc().get();

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:macsignaturepad/models/service_details.dart';
@@ -25,6 +26,8 @@ class Customer implements Comparable {
   Timestamp? nextTermin;
   Timestamp? smsSentTime;
   Timestamp? emailSentTime;
+  Timestamp? vollmachtExp;
+  Timestamp? bprotokollExp;
   String? lastSignatureId;
   Signature? lastSignature;
   String? token;
@@ -66,7 +69,7 @@ class Customer implements Comparable {
   );
 
   Customer({
-    String? id,
+    String? idd,
     required this.name,
     required this.surname,
     required this.advisorName,
@@ -79,6 +82,8 @@ class Customer implements Comparable {
     required this.phone,
     this.smsSentTime,
     this.nextTermin,
+    this.vollmachtExp,
+    this.bprotokollExp,
     this.emailSentTime,
     this.lastSignatureId,
     this.email,
@@ -87,26 +92,29 @@ class Customer implements Comparable {
     this.token,
     this.details,
   }) {
-    id ??= FirestorePathsService.getCustomerCol().doc().id;
-    this.id = id;
+    idd ??= FirestorePathsService.getCustomerCol().doc().id;
+    id = idd;
   }
 
 
-  Color get bprotokollExpiresDateColor => lastSignature?.bprotokollExpiresDateColor??Colors.red;
-  Color get vollmachtExpiresDateColor => lastSignature?.vollmachtExpiresDateColor??Colors.red;
-  String get readableExpBprotokoll => lastSignature?.readableExpBprotokoll==null?'----------':lastSignature!.readableExpBprotokoll!;
-  String get readableExpVollmacht => lastSignature?.readableExpVollmacht==null?'----------':lastSignature!.readableExpVollmacht!;
+  Color get bprotokollExpiresDateColor => lastSignature==null && lastSignatureId!=null?Colors.green:(lastSignature?.bprotokollExpiresDateColor??Colors.red);
+  Color get vollmachtExpiresDateColor => lastSignature==null && lastSignatureId!=null?Colors.green:(lastSignature?.vollmachtExpiresDateColor??Colors.red);
+
+  String get readableExpBprotokoll => lastSignature?.readableExpBprotokoll==null?'----------':lastSignature!.readableExpBprotokoll;
+  String get readableExpVollmacht => lastSignature?.readableExpVollmacht==null?'----------':lastSignature!.readableExpVollmacht;
 
   factory Customer.fromJson(Map<String, dynamic> json, String id) {
     Timestamp birthdate = json['birthdate'] is Timestamp ? json['birthdate'] : convertMapToTimestamp(json['birthdate']);
+    Timestamp? vollmachtExp = json['vollmachtExp']==null?null:(json['vollmachtExp'] is Timestamp ? json['vollmachtExp'] : convertMapToTimestamp(json['vollmachtExp']));
+    Timestamp? bprotokollExp = json['bprotokollExp']==null?null:(json['bprotokollExp'] is Timestamp ? json['bprotokollExp'] : convertMapToTimestamp(json['bprotokollExp']));
     Timestamp? smsSentTime = json['smsSentTime']==null?null:(json['smsSentTime'] is Timestamp ? json['smsSentTime'] : convertMapToTimestamp(json['smsSentTime']));
     Timestamp? emailSentTime = json['emailSentTime']==null?null:(json['emailSentTime'] is Timestamp ? json['emailSentTime'] : convertMapToTimestamp(json['emailSentTime']));
     Timestamp ts = json['ts'] is Timestamp ? json['ts'] : convertMapToTimestamp(json['ts']);
     Timestamp? nextTermin = json['nextTermin']==null?null:(json['nextTermin'] is Timestamp ? json['nextTermin'] : convertMapToTimestamp(json['nextTermin']));
     List<ServiceDetails>? details = json['details'] == null ? null : List<ServiceDetails>.from(json['details'].map((x) => ServiceDetails.fromJson(x)));
-    String street = json['street']??(json['country']??''); // because of old customers
+    String street = json['street'];
     return Customer(
-      id: id,
+      idd: id,
       name: json['name'],
       surname: json['surname'],
       phone: json['phone'],
@@ -118,6 +126,8 @@ class Customer implements Comparable {
       city: json['city'],
       street: street,
       lastSignatureId: json['lastSignatureId'],
+      bprotokollExp: bprotokollExp,
+      vollmachtExp: vollmachtExp,
       smsSentTime: smsSentTime,
       emailSentTime: emailSentTime,
       uid: json['uid'],
@@ -129,6 +139,25 @@ class Customer implements Comparable {
     );
   }
 
+  bool get isDownloaded => lastSignature?.isDownloaded??true;
+  bool get hasBackOfficeDownloaded => lastSignature?.officeDownloaded??true;
+
+  String fileName(String originalName) {
+    originalName = '$surname $name $originalName';
+    var nameWithoutSpecialChars = originalName
+        .replaceAllMapped(RegExp(r'[ÄäÖöÜüẞß]'), (match) {
+      switch (match[0]) {
+        case 'Ä': case 'ä': return 'ae';
+        case 'Ö': case 'ö': return 'oe';
+        case 'Ü': case 'ü': return 'ue';
+        case 'ẞ': case 'ß': return 'ss';
+        default: return '';
+      }
+    }).replaceAll(RegExp(r'[^\w\s-]'), '').replaceAll(' ', '_').toLowerCase();
+
+    return nameWithoutSpecialChars;
+  }
+
   Future initLastSignature() async {
     try {
       if (lastSignatureId == null || lastSignatureId!.isEmpty) return;
@@ -137,7 +166,9 @@ class Customer implements Comparable {
       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
       lastSignature = Signature.fromJson(data, doc.id);
     } catch (e) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
     }
   }
 
@@ -151,8 +182,8 @@ class Customer implements Comparable {
     return stnr!;
   }
   String get getReadablePhone {
-    if (phone == null || phone!.isEmpty) return '-';
-    return phone!;
+    if (phone.isEmpty) return '-';
+    return phone;
   }
 
   String get getReadableEmail {
@@ -174,7 +205,7 @@ class Customer implements Comparable {
   String get readableAddress => '$zip, $city, $street';
 
   static String generateToken() {
-    String time = DateTime.now().add(Duration(days: 3)).microsecondsSinceEpoch.toString();
+    String time = DateTime.now().add(const Duration(days: 3)).microsecondsSinceEpoch.toString();
     String characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     Random random = Random();
     return time + List.generate(24, (index) => characters[random.nextInt(characters.length)]).join();
@@ -194,6 +225,8 @@ class Customer implements Comparable {
     'street': street,
     'uid': uid,
     'stnr': stnr,
+    'vollmachtExp': vollmachtExp,
+    'bprotokollExp': bprotokollExp,
     'token': token,
     'nextTermin': nextTermin,
     'details': details?.map((e) => e.toJson()).toList(),
@@ -219,6 +252,12 @@ class Customer implements Comparable {
 
   @override
   int compareTo(other) {
+    if (lastSignatureId != null && other.lastSignatureId == null) {
+      return 1;
+    }
+    if (lastSignatureId == null && other.lastSignatureId != null) {
+      return -1;
+    }
     if (lastSignature != null && other.lastSignature == null) {
       return 1;
     }
@@ -236,25 +275,27 @@ class Customer implements Comparable {
     if (!doc.exists) return;
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     Customer customer = Customer.fromJson(data, doc.id);
-    this.name = customer.name;
-    this.surname = customer.surname;
-    this.phone = customer.phone;
-    this.email = customer.email;
-    this.advisorId = customer.advisorId;
-    this.advisorName = customer.advisorName;
-    this.ts = customer.ts;
-    this.birthdate = customer.birthdate;
-    this.zip = customer.zip;
-    this.city = customer.city;
-    this.street = customer.street;
-    this.uid = customer.uid;
-    this.stnr = customer.stnr;
-    this.token = customer.token;
-    this.nextTermin = customer.nextTermin;
-    this.details = customer.details;
-    this.lastSignatureId = customer.lastSignatureId;
-    this.smsSentTime = customer.smsSentTime;
-    this.emailSentTime = customer.emailSentTime;
+    name = customer.name;
+    surname = customer.surname;
+    phone = customer.phone;
+    email = customer.email;
+    advisorId = customer.advisorId;
+    advisorName = customer.advisorName;
+    ts = customer.ts;
+    birthdate = customer.birthdate;
+    zip = customer.zip;
+    city = customer.city;
+    street = customer.street;
+    uid = customer.uid;
+    stnr = customer.stnr;
+    token = customer.token;
+    nextTermin = customer.nextTermin;
+    details = customer.details;
+    lastSignatureId = customer.lastSignatureId;
+    smsSentTime = customer.smsSentTime;
+    emailSentTime = customer.emailSentTime;
     await initLastSignature();
   }
+
+  Future<bool> setIsDownloaded() async => await lastSignature?.setIsDownloaded(id)??false;
 }

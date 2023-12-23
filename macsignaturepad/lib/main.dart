@@ -27,12 +27,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: isSignedIn?'/admin':'/',
       routes: {
-        '/': (context) => isSignedIn?AdminScreen():NoSignatureScreen(),
-        '/sign': (context) => SignScreen(),
-        '/login': (context) => LoginScreen(),
-        '/admin': (context) => isSignedIn?AdminScreen():LoginScreen(),
-        '/admin/createCustomer': (context) => CreateCustomerScreen(),
-        '/admin/advisors': (context) => AdvisorsScreen(),
+        '/': (context) => isSignedIn?const AdminScreen():const NoSignatureScreen(),
+        '/sign': (context) => const SignScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/admin': (context) => isSignedIn?const AdminScreen():const LoginScreen(),
+        '/admin/createCustomer': (context) => const CreateCustomerScreen(),
+        '/admin/advisors': (context) => const AdvisorsScreen(),
       },
       title: 'Mac Signature Pad',
       theme: ThemeData(

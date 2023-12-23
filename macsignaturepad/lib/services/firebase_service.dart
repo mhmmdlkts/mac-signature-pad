@@ -17,7 +17,7 @@ class FirebaseService {
 
   static Future _connectToFirebaseEmulator() async {
 
-    FirebaseFirestore.instance.settings = Settings(
+    FirebaseFirestore.instance.settings = const Settings(
       host: '$localHostString:$firestorePort',
       sslEnabled: false,
       persistenceEnabled: false

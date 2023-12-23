@@ -13,19 +13,22 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.6
-  firebase_core: ^2.19.0
-  firebase_auth: ^4.11.1
-  cloud_firestore: ^4.11.0
-  firebase_storage: ^11.3.1
-  firebase_ui_auth: ^1.9.1
+  firebase_core: ^2.23.0
+  firebase_auth: ^4.14.1
+  cloud_firestore: ^4.13.2
+  firebase_storage: ^11.5.2
+  firebase_ui_auth: ^1.10.0
   hand_signature: ^3.0.1
   lottie: ^2.7.0
-  pdfx: ^2.4.0
   country_code_picker: ^3.0.0
+  # flutter_pdfview: ^1.2.7
+  # pdfx: ^2.5.0
   # internet_file: ^1.2.0
-  dio: ^5.3.3
-  syncfusion_flutter_pdf: ^23.1.41
-  url_launcher: ^6.1.14
+  dio: ^5.3.4
+  syncfusion_flutter_pdf: ^23.2.4
+  syncfusion_flutter_pdfviewer: ^23.2.4
+  url_launcher: ^6.2.1
+  intl: ^0.18.1
 
 
 dev_dependencies:

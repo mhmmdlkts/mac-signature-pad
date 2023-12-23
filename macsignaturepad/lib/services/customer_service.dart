@@ -1,49 +1,79 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:macsignaturepad/services/advisor_service.dart';
 
 import '../models/customer.dart';
+import '../models/signature.dart';
 import 'firebase_service.dart';
 import 'firestore_paths_service.dart';
 
 class CustomerService {
-  static final List<Customer> customers = [];
+  // static final List<Customer> customers = [];
   static final Map<int, Function> _listeners = {};
+  static final Map<String, List<Customer>> customersMap = {
+    
+  };
 
-  static Future initCustomers({int? id, Function? function}) async {
+  static Future initCustomers({int? id, Function? function, int year = 0, int month = 0, bool force = false}) async {
+    if ((year == 0 || month == 0) && year + month != 0) {
+      return;
+    }
+
+    String key = '$month-$year';
+    
     if (id != null && function != null) {
       _listeners[id] = function;
     }
+    if (customersMap[key] != null && !force) {
+      return;
+    }
+
     CollectionReference col = FirestorePathsService.getCustomerCol();
+    Query? query;
+    Query? query2;
+    if (year == 0 && month == 0) {
+      DateTime expiryLimit = DateTime.now().add(const Duration(days: Signature.warnDay));
+      query = col.where('vollmachtExp', isNull: true);
+      query2 = col.where('vollmachtExp', isLessThanOrEqualTo: expiryLimit);
+    } else {
+      DateTime startOfMonth = DateTime(year, month);
+      DateTime endOfMonth = DateTime(year, month + 1).subtract(const Duration(days: 1));
+      query = col.where('ts', isGreaterThanOrEqualTo: startOfMonth)
+          .where('ts', isLessThanOrEqualTo: endOfMonth);
+    }
+
 
     QuerySnapshot? querySnapshot;
+    QuerySnapshot? querySnapshot2;
     if (AdvisorService.isAdmin) {
-      querySnapshot = await col.get();
+      querySnapshot = await query.get();
+      querySnapshot2 = await query2?.get();
     } else if (FirebaseAuth.instance.currentUser != null) {
-      querySnapshot = await col.where('advisorId', isEqualTo: FirebaseAuth.instance.currentUser!.uid).get();
+      querySnapshot = await query.where('advisorId', isEqualTo: FirebaseAuth.instance.currentUser!.uid).get();
+      querySnapshot2 = await query2?.where('advisorId', isEqualTo: FirebaseAuth.instance.currentUser!.uid).get();
     } else {
       return;
     }
-    customers.clear();
-    querySnapshot?.docs.forEach((doc) {
+    customersMap[key]?.clear();
+    customersMap[key] ??= [];
+    for (var doc in querySnapshot.docs) {
       Customer customer = Customer.fromJson(doc.data() as Map<String, dynamic>, doc.id);
-      customers.add(customer);
-    });
+      customersMap[key]?.add(customer);
+    }
+    for (var doc in querySnapshot2?.docs??[]) {
+      Customer customer = Customer.fromJson(doc.data() as Map<String, dynamic>, doc.id);
+      customersMap[key]?.add(customer);
+    }
     List<Future> futures = [];
 
-    customers.forEach((customer) {
+    customersMap[key]?.forEach((customer) {
       futures.add(customer.initLastSignature());
     });
 
     await Future.wait(futures);
-    customers.sort();
-  }
-
-  static Future notifyListeners() async {
-    _listeners.forEach((key, value) {
-      value();
-    });
+    customersMap[key]?.sort();
   }
 
   static Future<bool> sendNotificationToCustomer({
@@ -64,30 +94,37 @@ class CustomerService {
     if (response.statusCode == 200) {
       return true;
     } else {
-      print('Error: ${response.statusCode}');
+      if (kDebugMode) {
+        print('Error: ${response.statusCode}');
+      }
       return false;
     }
   }
 
   static Future removeCustomer(Customer customer) async {
-    customers.remove(customer);
-    FirestorePathsService.getCustomerDoc(customerId: customer.id!).delete();
-    notifyListeners();
+    for (var customers in customersMap.values) {
+      customers.remove(customer);
+    }
+    FirestorePathsService.getCustomerDoc(customerId: customer.id).delete();
+    // notifyListeners();
   }
 
   static Future addNewCustomer(Customer customer, {bool sms = false}) async {
     await customer.push();
-    customers.add(customer);
-    customers.sort();
+    String key = '${DateTime.now().month}-${DateTime.now().year}';
+    customersMap[key] ??= [];
+    customersMap[key]?.add(customer);
+    customersMap[key]?.sort();
     try {
       await sendNotificationToCustomer(customer: customer, email: true, sms: sms);
     } catch (e) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
     }
-    notifyListeners();
   }
 
   static cleanCache() {
-    customers.clear();
+    customersMap.clear();
   }
 }

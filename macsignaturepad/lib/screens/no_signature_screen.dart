@@ -5,13 +5,15 @@ import 'package:macsignaturepad/screens/sign_screen.dart';
 import '../services/init_service.dart';
 
 class NoSignatureScreen extends StatelessWidget {
+  const NoSignatureScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SignScreen.backgroundColor,
       body: Stack(
         children: [
-          Center(
+          const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
@@ -20,7 +22,7 @@ class NoSignatureScreen extends StatelessWidget {
                   color: firstColor,
                   size: 100,
                 ),
-                SizedBox(height: 20), // Ein kleiner Abstand zwischen dem Icon und dem Text.
+                SizedBox(height: 20),
                 Text(
                   "Es gibt nichts zum Unterschreiben.",
                   style: TextStyle(
@@ -35,8 +37,8 @@ class NoSignatureScreen extends StatelessWidget {
             bottom: 5,
             right: 5,
             child: Text(
-              '${InitService.version}',
-              style: TextStyle(fontSize: 10),
+              InitService.version,
+              style: const TextStyle(fontSize: 10),
             ),
           ),
           Positioned(
@@ -46,7 +48,7 @@ class NoSignatureScreen extends StatelessWidget {
               onLongPress: () {
                 Navigator.pushReplacementNamed(context, '/login');
               },
-              child: Container(
+              child: const SizedBox(
                 width: 100,
                 height: 100,
               ),

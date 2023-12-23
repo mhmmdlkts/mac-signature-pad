@@ -1,9 +1,6 @@
-import 'dart:math';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:macsignaturepad/models/service_details.dart';
 
@@ -20,11 +17,10 @@ class CreateCustomerScreen extends StatefulWidget {
 }
 
 class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
-  List<Customer> get customers => CustomerService.customers;
   bool _isLoading = false ;
   bool isCompany = false;
   bool _sendSms = false;
-  bool _sendEmail = true;
+  final bool _sendEmail = true;
   final _formKey = GlobalKey<FormState>();
   String _name = '';
   String _surname = '';
@@ -54,7 +50,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
     if (_formKey.currentState!.validate()) {
       if (!isInsuranceOptionsValid()) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Bitte wählen Sie mindestens eine Versicherungsoption aus'),
           ),
         );
@@ -65,11 +61,11 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
       setState(() {
         _isLoading = true;
       });
-      _insuranceOptions.values.forEach((element) {
-        element.forEach((element) {
-          element.notes = element.getNotes;
-        });
-      });
+      for (var element in _insuranceOptions.values) {
+        for (var e in element) {
+          e.notes = e.getNotes;
+        }
+      }
       try {
         await CustomerService.addNewCustomer(
             Customer.create(
@@ -89,7 +85,9 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
             sms: _sendSms
         );
 
-        Navigator.pushReplacementNamed(context, '/admin');
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/admin');
+        }
       } catch (error) {
         setState(() {
           _isLoading = false;
@@ -102,11 +100,11 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   @override
   Widget build(BuildContext context) {
     if (FirebaseAuth.instance.currentUser == null) {
-      return Text('Nicht authentifiziert');
+      return const Text('Nicht authentifiziert');
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text('Neukunde anlegen'),
+        title: const Text('Neukunde anlegen'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -160,7 +158,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     TextFormField(
                       textCapitalization: TextCapitalization.words,
                       keyboardType: TextInputType.name,
-                      decoration: InputDecoration(labelText: 'Nachname'),
+                      decoration: const InputDecoration(labelText: 'Nachname'),
                       onSaved: (value) {
                         _surname = value!;
                       },
@@ -188,7 +186,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                       Expanded(
                         child: TextFormField(
                           keyboardType: TextInputType.phone,
-                          decoration: InputDecoration(labelText: 'Telefonnummer'),
+                          decoration: const InputDecoration(labelText: 'Telefonnummer'),
                           onSaved: (value) {
                             _phone = value!;
                           },
@@ -199,7 +197,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                             if (_countryCode.isEmpty) {
                               return 'Bitte ein Land auswählen';
                             }
-                            if (_countryCode == '+43' && value!.split('').first == '0') {
+                            if (_countryCode == '+43' && value.split('').first == '0') {
                               return 'Telefonnummer darf nicht mit 0 beginnen';
                             }
                             return null;
@@ -210,7 +208,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
                   TextFormField(
                     keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(labelText: 'E-Mail'),
+                    decoration: const InputDecoration(labelText: 'E-Mail'),
                     onSaved: (value) {
                       _email = value!;
                     },
@@ -226,7 +224,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
                   TextFormField(
                     keyboardType: TextInputType.datetime,
-                    decoration: InputDecoration(labelText: 'Geburtsdatum'),
+                    decoration: const InputDecoration(labelText: 'Geburtsdatum'),
                     onSaved: (value) {
                       _birthdate = parseDateTime(value!);
                     },
@@ -242,7 +240,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
                   TextFormField(
                     keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: 'Postleitzahl'),
+                    decoration: const InputDecoration(labelText: 'Postleitzahl'),
                     onSaved: (value) {
                       _zip = value!;
                     },
@@ -256,7 +254,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   TextFormField(
                     textCapitalization: TextCapitalization.words,
                     keyboardType: TextInputType.name,
-                    decoration: InputDecoration(labelText: 'Stadt'),
+                    decoration: const InputDecoration(labelText: 'Stadt'),
                     onSaved: (value) {
                       _city = value!;
                     },
@@ -270,7 +268,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   TextFormField(
                     textCapitalization: TextCapitalization.words,
                     keyboardType: TextInputType.streetAddress,
-                    decoration: InputDecoration(labelText: 'Straße'),
+                    decoration: const InputDecoration(labelText: 'Straße'),
                     onSaved: (value) {
                       _street = value!;
                     },
@@ -284,14 +282,14 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   if (isCompany)
                     TextFormField(
                       textCapitalization: TextCapitalization.characters,
-                      decoration: InputDecoration(labelText: 'UID'),
+                      decoration: const InputDecoration(labelText: 'UID'),
                       onSaved: (value) {
                         _uid = value;
                       }
                     ),
                   if (isCompany)
                     TextFormField(
-                      decoration: InputDecoration(labelText: 'Steuer Nummer'),
+                      decoration: const InputDecoration(labelText: 'Steuer Nummer'),
                       onSaved: (value) {
                         _stnr = value;
                       }
@@ -305,7 +303,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(height: 20),
-                  Text(option + ':', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('$option:', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   Container(height: 10),
                   ListView.separated(
                     physics: const NeverScrollableScrollPhysics(),
@@ -315,13 +313,13 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                           service: _insuranceOptions[option]![index]
                       );
                     },
-                    separatorBuilder: (context, index) => Divider(height: 0),
+                    separatorBuilder: (context, index) => const Divider(height: 0),
                     itemCount: _insuranceOptions[option]!.length,
                   ),
                 ]
               );
             }).toList(),
-            Divider(height: 0,),
+            const Divider(height: 0,),
             Container(height: 10,),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -331,48 +329,42 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     setState(() {
                       _insuranceOptions.forEach((key, value) {
                         setState(() {
-                          value.forEach((element) {
-                            if (element.status == null) {
-                              element.status = 0;
-                            }
-                          });
+                          for (var element in value) {
+                            element.status ??= 0;
+                          }
                         });
                       });
                     });
                   },
-                  child: Text('Rest Ja'),
+                  child: const Text('Rest Ja'),
                 ),
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
                       _insuranceOptions.forEach((key, value) {
                         setState(() {
-                          value.forEach((element) {
-                            if (element.status == null) {
-                              element.status = 1;
-                            }
-                          });
+                          for (var element in value) {
+                            element.status ??= 1;
+                          }
                         });
                       });
                     });
                   },
-                  child: Text('Rest Nein'),
+                  child: const Text('Rest Nein'),
                 ),
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
                       _insuranceOptions.forEach((key, value) {
                         setState(() {
-                          value.forEach((element) {
-                            if (element.status == null) {
-                              element.status = 2;
-                            }
-                          });
+                          for (var element in value) {
+                            element.status ??= 2;
+                          }
                         });
                       });
                     });
                   },
-                  child: Text('Rest Ändern'),
+                  child: const Text('Rest Ändern'),
                 ),
               ],
             ),
@@ -386,22 +378,22 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   setState(() {
                     _nextTermin = null;
                   });
-                }, child: Text('X')),
+                }, child: const Text('X')),
                 ElevatedButton(onPressed: () {
                   setState(() {
-                    _nextTermin = Timestamp.fromDate(DateTime.now().add(Duration(days: 365)));
+                    _nextTermin = Timestamp.fromDate(DateTime.now().add(const Duration(days: 365)));
                   });
-                }, child: Text('1 Jahr')),
+                }, child: const Text('1 Jahr')),
                 ElevatedButton(onPressed: () {
                   setState(() {
-                    _nextTermin = Timestamp.fromDate(DateTime.now().add(Duration(days: 365 * 2)));
+                    _nextTermin = Timestamp.fromDate(DateTime.now().add(const Duration(days: 365 * 2)));
                   });
-                }, child: Text('2 Jahr')),
+                }, child: const Text('2 Jahr')),
                 ElevatedButton(onPressed: () {
                   setState(() {
-                    _nextTermin = Timestamp.fromDate(DateTime.now().add(Duration(days: 365 * 3)));
+                    _nextTermin = Timestamp.fromDate(DateTime.now().add(const Duration(days: 365 * 3)));
                   });
-                }, child: Text('3 Jahr')),
+                }, child: const Text('3 Jahr')),
               ],
             ),
             Container(height: 10),
@@ -414,7 +406,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                         value: _sendEmail,
                         onChanged: null
                     ),
-                    Icon(Icons.email),
+                    const Icon(Icons.email),
                   ],
                 ),
                 Container(width: 30,),
@@ -428,17 +420,17 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                           });
                         }
                     ),
-                    Icon(Icons.perm_phone_msg),
+                    const Icon(Icons.perm_phone_msg),
                   ],
                 ),
                 Container(height: 10,),
               ],
             ),
             if (errorMessage.isNotEmpty)
-              Text(errorMessage, style: TextStyle(color: Colors.red)),
+              Text(errorMessage, style: const TextStyle(color: Colors.red)),
             ElevatedButton(
               onPressed: _isLoading?null:_saveForm,
-              child: Text('Speichern'),
+              child: const Text('Speichern'),
             ),
           ],
         ),
@@ -462,15 +454,15 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
 
   Widget singleInsuraceOption({required ServiceDetails service}) {
     return Container(
-      padding: EdgeInsets.all(5),
+      padding: const EdgeInsets.all(5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(service.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(service.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ValueListenableBuilder(
             valueListenable: _notesNotifier,
             builder: (context, _, __) {
-              return Text(service.notes??'', style: TextStyle(fontSize: 12, color: Colors.grey));
+              return Text(service.notes??'', style: const TextStyle(fontSize: 12, color: Colors.grey));
             },
           ),
           Row(
@@ -485,7 +477,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   });
                 },
               ),
-              Text('Ja'),
+              const Text('Ja'),
               Container(width: 10),
               Radio(
                 value: 1,
@@ -497,7 +489,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   });
                 },
               ),
-              Text('Nein'),
+              const Text('Nein'),
               Container(width: 10),
               Radio(
                 value: 2,
@@ -509,13 +501,13 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   });
                 },
               ),
-              Text('Ändern'),
+              const Text('Ändern'),
             ],
           ),
           Row(
             children: [
               Expanded(child: TextField(
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Notizen',
                   border: OutlineInputBorder(),
                 ),
@@ -529,7 +521,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                 setState(() {
                   service.notes = '';
                 });
-              }, icon: Icon(Icons.clear))
+              }, icon: const Icon(Icons.clear))
             ],
           )
         ],
@@ -540,11 +532,11 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   bool isInsuranceOptionsValid() {
     bool isValid = false;
     _insuranceOptions.forEach((key, value) {
-      value.forEach((element) {
+      for (var element in value) {
         if (element.status == 0 || element.status == 2) {
           isValid = true;
         }
-      });
+      }
     });
     return isValid;
   }

@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:pdfx/pdfx.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final Uint8List pdfBytes;
@@ -12,11 +12,6 @@ class PdfViewerScreen extends StatefulWidget {
 }
 
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
-
-
-  late final PdfControllerPinch pdfPinchController = PdfControllerPinch(
-    document: PdfDocument.openData(widget.pdfBytes),
-  );
 
   @override
   void initState() {
@@ -29,8 +24,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     return Scaffold(
       appBar: AppBar(
       ),
-      body: PdfViewPinch(
-        controller: pdfPinchController,
+      body: SfPdfViewer.memory(
+        widget.pdfBytes,
       ),
     );
   }

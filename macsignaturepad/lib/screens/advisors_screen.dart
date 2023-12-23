@@ -1,12 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:macsignaturepad/models/advisor.dart';
 import 'package:macsignaturepad/screens/splash_screen.dart';
 import 'package:macsignaturepad/services/advisor_service.dart';
-import 'package:macsignaturepad/services/customer_service.dart';
 import '../dialogs/add_advisor_dialog.dart';
-import '../models/customer.dart';
 
 class AdvisorsScreen extends StatefulWidget {
   const AdvisorsScreen({super.key});
@@ -36,22 +33,22 @@ class _AdvisorsScreenState extends State<AdvisorsScreen> {
   @override
   Widget build(BuildContext context) {
     if (FirebaseAuth.instance.currentUser == null || !AdvisorService.isAdmin) {
-      return Text('Nicht authentifiziert');
+      return const Text('Nicht authentifiziert');
     }
     if (_isLoading) {
       return SplashScreen();
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text('Berater verwalten'),
+        title: const Text('Berater verwalten'),
         actions: [
           IconButton(
-            icon: Icon(Icons.add),
+            icon: const Icon(Icons.add),
             onPressed: () async {
               Advisor? newAdvisor = await showDialog(
                 context: context,
                 builder: (BuildContext context) {
-                  return AlertDialog(
+                  return const AlertDialog(
                     title: Text('Berater Hinzufügen'),
                     content: AddAdvisorDialog(),
                   );
@@ -70,7 +67,7 @@ class _AdvisorsScreenState extends State<AdvisorsScreen> {
           final advisor = advisors[index];
           return ListTile(
             title: Text(advisor.name),
-            subtitle: Text('${advisor.email}'),
+            subtitle: Text(advisor.email),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -85,7 +82,7 @@ class _AdvisorsScreenState extends State<AdvisorsScreen> {
                     isRemoving = false;
                   });
                 },
-                icon: Icon(Icons.delete))
+                icon: const Icon(Icons.delete))
             ],
             ),
           );

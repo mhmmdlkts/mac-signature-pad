@@ -2,12 +2,14 @@ import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:macsignaturepad/models/advisor.dart';
 import 'package:macsignaturepad/services/advisor_service.dart';
-import 'package:macsignaturepad/services/firestore_paths_service.dart';
 
 class AddAdvisorDialog extends StatefulWidget {
+  const AddAdvisorDialog({super.key});
+
   @override
   _AddAdvisorDialogState createState() => _AddAdvisorDialogState();
 }
@@ -34,7 +36,7 @@ class _AddAdvisorDialogState extends State<AddAdvisorDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           TextFormField(
-            decoration: InputDecoration(labelText: 'Name'),
+            decoration: const InputDecoration(labelText: 'Name'),
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Bitte Namen eingeben';
@@ -46,7 +48,7 @@ class _AddAdvisorDialogState extends State<AddAdvisorDialog> {
             },
           ),
           TextFormField(
-            decoration: InputDecoration(labelText: 'E-Mail'),
+            decoration: const InputDecoration(labelText: 'E-Mail'),
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Bitte E-Mail eingeben';
@@ -58,7 +60,7 @@ class _AddAdvisorDialogState extends State<AddAdvisorDialog> {
             },
           ),
           TextFormField(
-            decoration: InputDecoration(labelText: 'Handynummer'),
+            decoration: const InputDecoration(labelText: 'Handynummer'),
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Bitte Handynummer eingeben';
@@ -84,9 +86,13 @@ class _AddAdvisorDialogState extends State<AddAdvisorDialog> {
 
                     await register(advisor);
 
-                    Navigator.of(context).pop(advisor);
+                    if (mounted) {
+                      Navigator.of(context).pop(advisor);
+                    }
                   } catch (e) {
-                    print(e);
+                    if (kDebugMode) {
+                      print(e);
+                    }
                   }
                   if (mounted) {
                     setState(() {
@@ -95,7 +101,7 @@ class _AddAdvisorDialogState extends State<AddAdvisorDialog> {
                   }
                 }
               },
-              child: Text('Hinzufügen'),
+              child: const Text('Hinzufügen'),
             ),
           ),
         ],
@@ -124,7 +130,9 @@ class _AddAdvisorDialogState extends State<AddAdvisorDialog> {
       await app.delete();
     }
     on FirebaseAuthException catch (e) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
     }
   }
 }

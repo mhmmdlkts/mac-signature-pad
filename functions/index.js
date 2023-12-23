@@ -176,10 +176,15 @@ function getSignUrl(token) {
     return `https://signature.mac-versicherung.at/?token=${token}#/sign`;
 }
 
-async function sendMail(customerId) {
+async function sendMail(customerId, autoRenew = false) {
     const customer = (await admin.firestore().collection('customers').doc(customerId).get()).data();
 
-    const mailOptions = mailTemplates.getActionNeedMailOptions(config.email, customer.email, customer.name + " " + customer.surname, getSignUrl(customer.token));
+    let mailOptions
+    if (autoRenew) {
+        mailOptions = mailTemplates.getAutoRenewMailOptions(config.email, customer.email, customer.name + " " + customer.surname, getSignUrl(customer.token));
+    } else {
+        mailOptions = mailTemplates.getActionNeedMailOptions(config.email, customer.email, customer.name + " " + customer.surname, getSignUrl(customer.token));
+    }
 
     let check = false;
 
@@ -286,6 +291,8 @@ exports.signPdfs = functions.region('europe-west1').https.onRequest(async (reque
 
         await customerDoc.update({
             lastSignatureId: docRef.id,
+            bprotokollExp: bprotokollExp,
+            vollmachtExp: vollmachtExp,
             token: null
         })
 
@@ -296,22 +303,29 @@ exports.signPdfs = functions.region('europe-west1').https.onRequest(async (reque
 });
 
 
-exports.weekdayJob = functions.pubsub.schedule('0 10 1 * *').timeZone('Europe/Berlin').onRun((context) => {
+exports.weekdayJob = functions.pubsub.schedule('0 9 9 * *').timeZone('Europe/Berlin').onRun((context) => {
+    checkAndSendMail()
+});
 
-    const customers = admin.firestore().collection('customers');
+async function checkAndSendMail() {
     const now = new Date();
     const bprotokollExp = new Date(now.getTime() + howManyDaysBeforeExpWarn * 24 * 60 * 60 * 1000);
+    console.log('bprotokollExp', bprotokollExp);
 
-    customers.where('bprotokollExp', '<', bprotokollExp).get().then((snapshot) => {
+    admin.firestore().collection('customers').where('bprotokollExp', '<', bprotokollExp).get().then((snapshot) => {
+        console.log('bprotokollExp', snapshot.size);
+
         snapshot.forEach((doc) => {
+            console.log(doc.id)
             const customer = doc.data();
+            console.log(customer.email)
             if (customer.email != undefined || customer.email != null) {
-                sendMail(doc.id);
+                sendMail(doc.id, true);
             }
         });
     });
     return null;
-});
+}
 
 async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail, name) {
 
@@ -339,8 +353,118 @@ async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail
         });
 }
 
+exports.getAllUsers = functions.region('europe-west1').runWith({timeoutSeconds: 540, memory: '8GB'}).https.onRequest(async (request, response) => {
+    const authorization = request.headers.authorization;
+    const apiKey = authorization.split('Bearer ')[1];
+
+    if (apiKey != config.FUNCTIONS_KEY) {
+        return response.status(400).send('Ungültiger Request: Authorization key ist falsch.');
+    }
+    const customers = await admin.firestore().collection('customers').get();
+    let csvData = 'Nachname;Name;Geburtsdatum;PLZ;Ort;Strasse;Begin;Ablauf;AdivsorName;Telefon;E-Mail;Vollmacht;Beratungsprotokoll\n';
+
+    const formatBirthdate = (birthdate) => {
+        if (!birthdate) return '';
+
+        let date;
+        if (typeof birthdate.toDate === 'function') {
+            date = birthdate.toDate();
+        } else if (birthdate instanceof Date) {
+            date = birthdate;
+        } else {
+            date = new Date(birthdate);
+        }
+
+        date.setHours(date.getHours() + 12);
+
+        if (isNaN(date)) return 'Ungültiges Datum';
+
+        return date.toLocaleDateString('de-AT');
+    };
+
+    const formatTimestamp = (timestamp) => {
+        if (!timestamp) return '';
+
+        const date = timestamp.toDate ? timestamp.toDate() : timestamp;
+        return date instanceof Date ? date.toLocaleDateString('de-AT') : '';
+    };
+
+    const customerData = (customer, signature) => {
+        return {
+            surname: customer.surname || '',
+            name: customer.name || '',
+            birthdate: formatBirthdate(customer.birthdate),
+            zip: customer.zip || '',
+            city: customer.city || '',
+            street: customer.street || '',
+            begin: formatTimestamp(signature.data().signedAt),
+            ablauf: formatTimestamp(signature.data().bprotokollExp),
+            advisorName: customer.advisorName || '',
+            phone: customer.phone || '',
+            email: customer.email || '',
+            vollmacht: signature.data().vollmachtPdfUrl || '',
+            beratungsprotokoll: signature.data().bprotokollPdfUrl || '',
+        };
+    };
+
+    for (let i = 0; i < customers.size; i++) {
+        const customer = customers.docs[i].data();
+        try {
+            const signature = await admin.firestore().collection('customers').doc(customers.docs[i].id).collection('signatures').doc(customer.lastSignatureId).get();
+
+            const cData = customerData(customer, signature);
+
+            csvData += `${cData.surname};${cData.name};${cData.birthdate};${cData.zip};${cData.city};${cData.street};${cData.begin};${cData.ablauf};${cData.advisorName};${cData.phone};${cData.email};${cData.vollmacht};${cData.beratungsprotokoll}\n`
+        } catch (e) {
+            console.log(e)
+        }
+    }
+    return response
+        .set({
+            "Content-Type": "text/csv",
+            "Content-Disposition": `attachment; filename="users.csv"`,
+        })
+        .send(csvData)
+});
+
+exports.aaabbbccc = functions.region('europe-west1').https.onRequest(async (request, response) => {
+
+    const customers = await admin.firestore().collection('customers').get();
+
+    for (let i = 0; i < customers.size; i++) {
+        const customer = customers.docs[i].data();
+        try {
+            let bprotokollExp = null;
+            let vollmachtExp = null;
+            let street = customer.street;
+            let country = customer.country ?? '';
+
+            if (street == undefined || street == null || street == '') {
+                street = country;
+            }
+
+            try {
+                const signature = await admin.firestore().collection('customers').doc(customers.docs[i].id).collection('signatures').doc(customer.lastSignatureId).get();
+                bprotokollExp = signature.data().bprotokollExp;
+                vollmachtExp = signature.data().vollmachtExp;
+            } catch (e) {
+            }
+
+            await admin.firestore().collection('customers').doc(customers.docs[i].id).update({
+                'bprotokollExp': bprotokollExp,
+                'vollmachtExp': vollmachtExp,
+                'street': street,
+                'country': admin.firestore.FieldValue.delete()
+            });
+        } catch (e) {
+            console.log(e)
+        }
+    }
+    return response.send(csvData)
+});
 
 exports.getUserData = functions.region('europe-west1').https.onRequest(async (request, response) => {
+
     return cors(request, response, async () => {
         const token = request.query.token;
         const timestamp = parseInt(token.substring(0, 16));

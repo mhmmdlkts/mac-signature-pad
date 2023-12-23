@@ -1,11 +1,10 @@
 import 'package:macsignaturepad/services/advisor_service.dart';
-import 'package:macsignaturepad/services/customer_service.dart';
 
 class InitService {
   static bool isInited = false;
   static bool isIniting = false;
 
-  static String version = '0.82v';
+  static String version = '0.98v';
 
   static Future init({required int id, required Function function, bool force = false}) async {
     if ((isIniting || isInited) && !force) {
@@ -13,10 +12,7 @@ class InitService {
     }
     isIniting = true;
     await AdvisorService.initAdvisor();
-    List<Future> toDo = [
-      CustomerService.initCustomers(id: id, function: function)
-    ];
-    await Future.wait(toDo);
+    // await CustomerService.initCustomers(id: id, function: function);
     isInited = true;
     isIniting = false;
   }

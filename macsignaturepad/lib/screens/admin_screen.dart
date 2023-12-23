@@ -1,14 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:macsignaturepad/models/advisor.dart';
 import 'package:macsignaturepad/screens/splash_screen.dart';
 import 'package:macsignaturepad/services/advisor_service.dart';
+import 'package:macsignaturepad/services/csv_service.dart';
 import 'package:macsignaturepad/services/customer_service.dart';
 import 'package:macsignaturepad/services/init_service.dart';
-import 'package:macsignaturepad/services/pdf_service.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../models/customer.dart';
+import 'dart:html' as html;
+import 'package:http/http.dart' as http;
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -21,108 +22,257 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _isLoading = true;
   ValueNotifier<Customer?> selectedCustomer = ValueNotifier(null);
   String query = '';
-
-  List<Customer> getCustomers() {
-    if (query.isEmpty) {
-      return CustomerService.customers;
+  final List years = [];
+  int selectedYear = 0;
+  int selectedMonth = 0;
+  List get months {
+    if (selectedYear == DateTime.now().year) {
+      return List.generate(DateTime.now().month, (index) => index+1).reversed.toList();
+    } else {
+      return List.generate(12, (index) => index+1).reversed.toList();
     }
-    return CustomerService.customers.where((element) {
+  }
+
+  Future<List<Customer>> getCustomers() async {
+    await CustomerService.initCustomers(year: selectedYear, month: selectedMonth);
+    List<Customer> customers = CustomerService.customersMap['$selectedMonth-$selectedYear']??[];
+
+    if (query.isEmpty) {
+      return customers;
+    }
+    return customers.where((element) {
       if (query.isEmpty) {
         return true;
       }
       return element.name.toLowerCase().contains(query.toLowerCase()) ||
           element.surname.toLowerCase().contains(query.toLowerCase()) ||
-          (element.email?.toLowerCase()?.contains(query.toLowerCase())??false) ||
+          (element.email?.toLowerCase().contains(query.toLowerCase())??false) ||
           element.phone.toLowerCase().contains(query.toLowerCase());
     }).toList();
   }
 
+  Future refresh() async {
+    setState(() {
+      _isLoading = true;
+    });
+    await CustomerService.initCustomers(year: selectedYear, month: selectedMonth);
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
   @override
   void initState() {
+    super.initState();
     if (FirebaseAuth.instance.currentUser == null) {
       Navigator.pushReplacementNamed(context, '/login');
+    }
+    for (int i = DateTime.now().year; i >= 2023; i--) {
+      years.add(i);
     }
     InitService.init(id: context.hashCode, function: () {
       setState(() {});
     }).then((value) => {
-      Future.delayed(Duration(seconds: 1), () {
+      Future.delayed(const Duration(seconds: 1), () {
         setState(() {
           _isLoading = false;
         });
       })
     });
-    super.initState();
-
   }
 
   @override
   Widget build(BuildContext context) {
-    if (FirebaseAuth.instance.currentUser == null) {
-      return Text('Nicht authentifiziert');
-    }
-    if (_isLoading) {
+    if (!InitService.isInited) {
       return SplashScreen();
     }
+    if (FirebaseAuth.instance.currentUser == null) {
+      return const Text('Nicht authentifiziert');
+    }
     return Scaffold(
-      body: ListView(
-        children: [
-          appBar(),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  query = value;
-                });
-              },
-              decoration: InputDecoration(
-                labelText: 'Search',
-                border: OutlineInputBorder(),
+      body: RefreshIndicator(
+        onRefresh: refresh,
+        child: ListView(
+          children: [
+            appBar(),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                onChanged: (value) {
+                  setState(() {
+                    query = value;
+                  });
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Search',
+                  border: OutlineInputBorder(),
+                ),
               ),
             ),
-          ),
-          Container(
-            padding: EdgeInsets.only(bottom: 10),
-            child: ElevatedButton(
-              onPressed: () async {
-                await Navigator.pushNamed(context, '/admin/createCustomer');
-              },
-              child: Text('Neuen Kunden anlegen +'),
+            Container(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Container(width: 10),
+                  Expanded(child: ElevatedButton(
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/admin/createCustomer');
+                    },
+                    child: const Text('Neuen Kunden anlegen +'),
+                  ),),
+                  Container(width: 10),
+                  ElevatedButton(
+                    onPressed: _isLoading?null:refresh,
+                    child: const Icon(
+                      Icons.refresh
+                    )
+                  ),
+                  Container(width: 10),
+                ],
+              )
             ),
-          ),
-          Builder(
-              builder: (ctx) {
-                List<Customer> customers = getCustomers();
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    await CustomerService.initCustomers();
-                    setState(() {});
-                  },
-                  child: ListView.separated(
-                    physics: NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: customers.length,
-                    separatorBuilder: (context, index) => Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Divider(height: 0, color: Colors.black12),),
-                    itemBuilder: (context, index) {
-                      final customer = customers[index];
-                      return ValueListenableBuilder(
-                        valueListenable: selectedCustomer,
-                        builder: (context, value, child) {
-                          return InkWell(
-                              onTap: selectedCustomer.value==customer?null:() {
-                                selectedCustomer.value = customer;
+            Row(
+              children: [
+                Container(
+                  height: 70,
+                  margin: const EdgeInsets.all(5),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      setState(() {
+                        selectedMonth = 0;
+                        selectedYear = 0;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                          color: selectedMonth == 0&&selectedYear ==0?Colors.blue:Colors.grey[300],
+                          borderRadius: BorderRadius.circular(8)
+                      ),
+                      child: const Center(child: Icon(Icons.query_builder)),
+                    ),
+                  ),
+                ),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                        height: 40,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          shrinkWrap: true,
+                          itemCount: years.length,
+                          itemBuilder: (context, i) => Container(
+                            margin: const EdgeInsets.all(5),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                if (selectedMonth == 0) {
+                                  selectedMonth = DateTime.now().month;
+                                } else {
+                                  selectedMonth = 1;
+                                }
+                                setState(() {
+                                  selectedYear = years[i];
+                                });
                               },
-                              child: singleCustomerRow(customer)
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                    color: selectedYear == years[i]?Colors.blue:Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(8)
+                                ),
+                                child: Center(child: Text(years[i].toString())),
+                              ),
+                            ),
+                          ),
+                        )
+                    ),
+                    SizedBox(
+                        height: 30,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          shrinkWrap: true,
+                          itemCount: months.length,
+                          itemBuilder: (context, i) => Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 5),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                setState(() {
+                                  selectedMonth = months[i];
+                                  if (selectedYear == 0) {
+                                    selectedYear = DateTime.now().year;
+                                  }
+                                });
+                              },
+                              child: Container(
+                                width: 40,
+                                decoration: BoxDecoration(
+                                    color: selectedMonth == months[i]?Colors.blue:Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(8)
+                                ),
+                                child: Center(child: Text(months[i].toString())),
+                              ),
+                            ),
+                          ),
+                        )
+                    ),
+                  ],
+                ))
+              ],
+            ),
+            Builder(
+                builder: (ctx) {
+                  return FutureBuilder(
+                    future: getCustomers(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return SplashScreen();
+                      }
+                      if (snapshot.hasError) {
+                        if (kDebugMode) {
+                          print(snapshot.error);
+                        }
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+                      if (snapshot.data == null || (snapshot.data as List<Customer>).isEmpty) {
+                        return Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            child: const Text('Keine Kunden vorhanden für diesen Monat'),
+                          ),
+                        );
+                      }
+                      List<Customer> customers = snapshot.data as List<Customer>;
+                      return ListView.separated(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: customers.length,
+                        separatorBuilder: (context, index) => const Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Divider(height: 0, color: Colors.black12),),
+                        itemBuilder: (context, index) {
+                          final customer = customers[index];
+                          return ValueListenableBuilder(
+                            valueListenable: selectedCustomer,
+                            builder: (context, value, child) {
+                              return InkWell(
+                                  onTap: selectedCustomer.value==customer?null:() {
+                                    selectedCustomer.value = customer;
+                                  },
+                                  child: singleCustomerRow(customer)
+                              );
+                            },
                           );
                         },
                       );
                     },
-                  )
-                );
-              }
-          ),
-          Container(height: 30),
-        ],
+                  );
+                }
+            ),
+            Container(height: 30),
+          ],
+        ),
       ),
     );
   }
@@ -133,9 +283,9 @@ class _AdminScreenState extends State<AdminScreen> {
       mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
+        const Row(
          children: [
-           const Column(
+           Column(
              mainAxisAlignment: MainAxisAlignment.center,
              crossAxisAlignment: CrossAxisAlignment.end,
              children: [
@@ -165,22 +315,47 @@ class _AdminScreenState extends State<AdminScreen> {
           child: Row (
             mainAxisAlignment: existButton?MainAxisAlignment.spaceBetween:MainAxisAlignment.center,
             children: [
-              if (existButton)
-                const Opacity(
-                  opacity: 0,
-                  child: IconButton(
-                      icon: Icon(Icons.arrow_back),
-                      onPressed: null
-                  ),
+              Opacity(
+                opacity: AdvisorService.isAdmin?1:0,
+                child: IconButton(
+                    icon: const Icon(Icons.list),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Excel Export'),
+                            content: SizedBox(
+                              width: double.maxFinite,
+                              child: ListView(
+                                shrinkWrap: true,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      CSVService.getCSV();
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: const Text('Kunden exportieren'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
                 ),
-              Text('Kundenübersicht', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              if (existButton)
-                IconButton(
-                  icon: Icon(Icons.settings),
-                  onPressed: () {
+              ),
+              const Text('Kundenübersicht', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Opacity(
+                opacity: existButton?1:0,
+                child: IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: existButton?() {
                     Navigator.pushNamed(context, '/admin/advisors');
-                  },
-                )
+                  }:null,
+                ),
+              )
             ],
           ),
         ),
@@ -188,8 +363,8 @@ class _AdminScreenState extends State<AdminScreen> {
           left: 5,
           bottom: 5,
           child: Text(
-            '${InitService.version}',
-            style: TextStyle(fontSize: 10),
+            InitService.version,
+            style: const TextStyle(fontSize: 10),
           )
         ),
       ],
@@ -199,13 +374,13 @@ class _AdminScreenState extends State<AdminScreen> {
   singleCustomerRow(Customer customer) {
     bool isSelected = selectedCustomer.value?.id == customer.id;
     return Container(
-      padding: EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (selectedCustomer.value == customer)
             Container(
-              padding: EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 10),
               child: Row(
                 children: [
                   Material(
@@ -218,7 +393,7 @@ class _AdminScreenState extends State<AdminScreen> {
                           selectedCustomer.notifyListeners();
                         },
                         child: Container(
-                            padding: EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(8),
                             child: const  Column(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -235,11 +410,11 @@ class _AdminScreenState extends State<AdminScreen> {
                       color: Colors.grey[300],
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
-                        onTap: selectedCustomer.value!.phone == null?null:() {
+                        onTap: () {
                           customer.sendSms();
                         },
                         child: Container(
-                            padding: EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(8),
                             child: const  Column(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -251,24 +426,24 @@ class _AdminScreenState extends State<AdminScreen> {
                   ),
                   Container(width: 10),
                   Material(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey[300],
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey[300],
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () async {
-                          await selectedCustomer.value?.refresh();
-                          selectedCustomer.notifyListeners();
-                        },
-                        child: Container(
-                            padding: EdgeInsets.all(8),
-                            child: const  Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Icon(Icons.refresh, size: 20,),
-                              ],
-                            )
-                        ),
-                      )
+                      onTap: () async {
+                        await selectedCustomer.value?.refresh();
+                        selectedCustomer.notifyListeners();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: const  Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Icon(Icons.refresh, size: 20,),
+                          ],
+                        )
+                      ),
+                    )
                   ),
                   Expanded(child: Container()),
                   Material(
@@ -281,20 +456,22 @@ class _AdminScreenState extends State<AdminScreen> {
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
-                                title: Text('Kunden löschen'),
+                                title: const Text('Kunden löschen'),
                                 content: Text('Soll der Kunde ${customer.name} ${customer.surname} wirklich gelöscht werden?'),
                                 actions: <Widget>[
                                   TextButton(
-                                    child: Text('Abbrechen'),
+                                    child: const Text('Abbrechen'),
                                     onPressed: () {
                                       Navigator.of(context).pop();
                                     },
                                   ),
                                   TextButton(
-                                    child: Text('Löschen'),
+                                    child: const Text('Löschen'),
                                     onPressed: () async {
                                       await CustomerService.removeCustomer(customer);
-                                      Navigator.of(context).pop(true);
+                                      if (mounted) {
+                                        Navigator.of(context).pop(true);
+                                      }
                                     },
                                   ),
                                 ],
@@ -306,7 +483,7 @@ class _AdminScreenState extends State<AdminScreen> {
                           }
                         },
                         child: Container(
-                            padding: EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(8),
                             child: const  Column(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -325,8 +502,19 @@ class _AdminScreenState extends State<AdminScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${customer.name} ${customer.surname}', style: TextStyle(fontSize:16, fontWeight: FontWeight.bold)),
-                  Text(customer.readableBirthdate,),
+                  Row(
+                    children: [
+                      if (!customer.isDownloaded && !AdvisorService.isOffice)
+                        Container(
+                          padding: const EdgeInsets.only(right: 5),
+                          child: const Icon(Icons.circle, color: Colors.blue, size: 10,),
+                        ),
+                      Text('${customer.name} ${customer.surname}', style: const TextStyle(fontSize:16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  if (AdvisorService.isAdmin && !customer.hasBackOfficeDownloaded)
+                    const Text('Nicht bearbeitet', style: TextStyle(color: Colors.red, fontSize: 12),),
+                  Text(customer.readableCreateTime,),
                 ],
               ),
               trailing(customer),
@@ -336,74 +524,89 @@ class _AdminScreenState extends State<AdminScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(customer.getReadableEmail),
-                    Text(customer.getReadablePhone),
-                    Text(customer.readableAddress),
-                    Text('Uid: ${customer.getReadableUid}'),
-                    Text('Steuernr: ${customer.getReadableStnr}'),
-                    Text('Erstellungszeit: ${customer.readableCreateTime}'),
-                    Text('Berater: ${customer.advisorName}'),
-                  ],
+                SizedBox(
+                  width: MediaQuery.of(context).size.width*0.6,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(customer.id),
+                      Text(customer.readableBirthdate),
+                      Text(customer.getReadableEmail),
+                      Text(customer.getReadablePhone),
+                      Text(customer.street),
+                      Text('${customer.zip}, ${customer.city}'),
+                      Text('Uid: ${customer.getReadableUid}'),
+                      Text('Steuernr: ${customer.getReadableStnr}'),
+                      Text('Erstellungszeit: ${customer.readableCreateTime}'),
+                      Text('Berater: ${customer.advisorName}'),
+                    ],
+                  ),
                 ),
                 if (customer.lastSignature != null)
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Material(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey[300],
-                      child: InkWell(
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Material(
                         borderRadius: BorderRadius.circular(8),
-                        onTap: () {
-                          if (customer.lastSignature == null) {
-                            return;
-                          }
-                          openPdf(customer.lastSignature!.vollmachtPdfUrl);
-                        },
-                        child: Container(
-                            width: 120,
-                            height: 50,
-                            padding: EdgeInsets.all(10),
-                            child:const  Row (
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Text('Vollmacht', overflow: TextOverflow.fade,),
-                                Icon(Icons.download),
-                              ],
-                            )
+                        color: Colors.grey[300],
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            if (customer.lastSignature == null) {
+                              return;
+                            }
+                            await downloadFile(customer.lastSignature!.vollmachtPdfUrl, '${customer.fileName('vollmacht')}.pdf');
+                            customer.setIsDownloaded().then((value) async {
+                              await selectedCustomer.value?.refresh();
+                              selectedCustomer.notifyListeners();
+                            });
+                          },
+                          child: Container(
+                              width: 90,
+                              height: 50,
+                              padding: const EdgeInsets.all(10),
+                              child:const  Row (
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Text('Vollmacht', overflow: TextOverflow.fade,)
+                                ],
+                              )
+                          ),
                         ),
                       ),
-                    ),
-                    Container(height: 10),
-                    Material(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey[300],
-                      child: InkWell(
+                      Container(height: 10),
+                      Material(
                         borderRadius: BorderRadius.circular(8),
-                        onTap: () {
-                          if (customer.lastSignature == null) {
-                            return;
-                          }
-                          openPdf(customer.lastSignature!.bprotokollPdfUrl);
-                        },
-                        child: Container(
-                            width: 120,
-                            height: 50,
-                            padding: EdgeInsets.all(10),
-                            child: const Row (
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Text('Protokoll',),
-                                Icon(Icons.download),
-                              ],
-                            )
+                        color: Colors.grey[300],
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            if (customer.lastSignature == null) {
+                              return;
+                            }
+                            await downloadFile(customer.lastSignature!.bprotokollPdfUrl, '${customer.fileName('bprotokoll')}.pdf');
+                            customer.setIsDownloaded().then((value) async {
+                              await selectedCustomer.value?.refresh();
+                              selectedCustomer.notifyListeners();
+                            });
+                          },
+                          child: Container(
+                              width: 90,
+                              height: 50,
+                              padding: const EdgeInsets.all(10),
+                              child: const Row (
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Text('Protokoll',),
+                                ],
+                              )
+                          ),
                         ),
-                      ),
-                    )
-                  ],
+                      )
+                    ],
+                  )
                 )
               ],
             )
@@ -412,11 +615,27 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  void openPdf(String url) async {
+  Future openPdf(String url) async {
     if (await canLaunchUrlString(url)) {
       await launchUrlString(url);
     } else {
       throw 'Could not launch $url';
+    }
+  }
+
+  Future<void> downloadFile(String url, String fileName) async {
+    try {
+      var response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        var blob = html.Blob([response.bodyBytes]);
+        var url = html.Url.createObjectUrlFromBlob(blob);
+        html.AnchorElement(href: url)
+          ..setAttribute("download", fileName)
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      }
+    } catch (e) {
+      openPdf(url);
     }
   }
 }

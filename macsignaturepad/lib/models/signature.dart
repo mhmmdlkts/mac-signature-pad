@@ -2,7 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../services/advisor_service.dart';
+import '../services/firestore_paths_service.dart';
+
 class Signature implements Comparable {
+
+  static const int warnDay = 45;
+
   late String id;
   late String signature;
   late String advisorName;
@@ -14,6 +20,8 @@ class Signature implements Comparable {
   late Timestamp signedAt;
   late Timestamp vollmachtExp;
   late Timestamp bprotokollExp;
+  late bool advisorDownloaded;
+  late bool officeDownloaded;
 
   Signature({
     required this.id,
@@ -27,6 +35,8 @@ class Signature implements Comparable {
     required this.signedAt,
     required this.vollmachtExp,
     required this.bprotokollExp,
+    required this.advisorDownloaded,
+    required this.officeDownloaded,
   });
 
   factory Signature.fromJson(Map<String, dynamic> json, String id) => Signature(
@@ -41,18 +51,18 @@ class Signature implements Comparable {
     signedAt: json['signedAt'],
     vollmachtExp: json['vollmachtExp'],
     bprotokollExp: json['bprotokollExp'],
+    advisorDownloaded: json['advisorDownloaded']??false,
+    officeDownloaded: json['officeDownloaded']??false,
   );
-
-
 
   Color get bprotokollExpiresDateColor => _getColorByDate(bprotokollExp);
   Color get vollmachtExpiresDateColor => _getColorByDate(vollmachtExp);
-  String get readableExpBprotokoll => bprotokollExp==null?'----------':DateFormat('dd.MM.yyyy').format(bprotokollExp!.toDate());
-  String get readableExpVollmacht => vollmachtExp==null?'----------':DateFormat('dd.MM.yyyy').format(vollmachtExp!.toDate());
+  String get readableExpBprotokoll => DateFormat('dd.MM.yyyy').format(bprotokollExp.toDate());
+  String get readableExpVollmacht => DateFormat('dd.MM.yyyy').format(vollmachtExp.toDate());
 
   Color _getColorByDate(Timestamp? date) {
     if (date == null || date.toDate().isBefore(DateTime.now())) return Colors.red;
-    if (date.toDate().isBefore(DateTime.now().add(const Duration(days: 30)))) return Colors.orange;
+    if (date.toDate().isBefore(DateTime.now().add(const Duration(days: warnDay)))) return Colors.orange;
     return Colors.green;
   }
 
@@ -60,6 +70,38 @@ class Signature implements Comparable {
 
   @override
   int compareTo(other) {
+    if (other is! Signature) return 0;
+    if (isDownloaded && !other.isDownloaded) return 1;
+    if (!isDownloaded && other.isDownloaded) return -1;
     return expiresDate.compareTo(other.expiresDate);
+  }
+
+  bool get isDownloaded {
+    if (AdvisorService.isOffice) {
+      return officeDownloaded;
+    } else {
+      if (advisorId == AdvisorService.advisor?.id) {
+        return advisorDownloaded;
+      }
+      return true;
+    }
+  }
+
+  Future<bool> setIsDownloaded(customerId) async {
+    if (AdvisorService.isOffice) {
+      if (officeDownloaded) return false;
+      officeDownloaded = true;
+      await FirestorePathsService.getSignatureDoc(customerId: customerId, signatureId: id).update({
+        'officeDownloaded': true,
+      });
+      return true;
+    } else {
+      if (advisorDownloaded) return false;
+      advisorDownloaded = true;
+      await FirestorePathsService.getSignatureDoc(customerId: customerId, signatureId: id).update({
+        'advisorDownloaded': true,
+      });
+      return true;
+    }
   }
 }

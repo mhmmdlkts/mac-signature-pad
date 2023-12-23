@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../services/firestore_paths_service.dart';
 
 class Advisor {
@@ -15,7 +13,7 @@ class Advisor {
     required this.email,
     required this.phone,
     required this.role,
-  }): assert(role == 'admin' || role == 'advisor');
+  }): assert(role == 'admin' || role == 'advisor' || role == 'office');
 
   factory Advisor.create({
     required String name,
@@ -40,7 +38,8 @@ class Advisor {
     );
   }
 
-  bool get isAdmin => role == 'admin';
+  bool get isAdmin => role == 'admin' || isOffice;
+  bool get isOffice => role == 'office';
 
   Map<String, dynamic> toJson() => {
     'name': name,
