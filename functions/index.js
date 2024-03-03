@@ -48,7 +48,7 @@ exports.getPdf = functions.runWith({
 
         const customerDoc = admin.firestore().collection('customers').doc(request.body.customer_id)
         const customer = (await customerDoc.get()).data();
-        if (customer==undefined || customer.token !== request.body.token) {
+        if (customer===undefined || customer.token !== request.body.token) {
             response.status(400).send('Invalid token');
             return;
         }
@@ -75,9 +75,9 @@ exports.getPdf = functions.runWith({
         const details = customer.details??[];
         for (let i = 0; i < details.length; i++) {
             const element = details[i];
-            placeholders[element.code+'-yes'] = element.status == 0?'x':'';
-            placeholders[element.code+'-no'] = element.status == 1?'x':'';
-            placeholders[element.code+'-change'] = element.status == 2?'x':'';
+            placeholders[element.code+'-yes'] = element.status === 0?'x':'';
+            placeholders[element.code+'-no'] = element.status === 1?'x':'';
+            placeholders[element.code+'-change'] = element.status === 2?'x':'';
             placeholders[element.code+'-note'] = element.notes??'';
         }
 
@@ -101,14 +101,13 @@ exports.getPdf = functions.runWith({
             console.log('Failed to send message: ', error);
             return response.status(400).send('Failed to send message b ' + error);
         }
-        return response.status(400).send('Failed to send message c');
     });
 });
 
 function getCurrentDateFormatted() {
     const today = new Date();
     const day = today.getDate().toString().padStart(2, '0');
-    const month = (today.getMonth() + 1).toString().padStart(2, '0'); // Monate sind von 0-11
+    const month = (today.getMonth() + 1).toString().padStart(2, '0'); // Monate sind von 0 bis 11
     const year = today.getFullYear();
 
     return `${day}.${month}.${year}`;
@@ -129,12 +128,11 @@ function getReadableDate(timestamp) {
 }
 
 
-exports.onCustomerCreate = functions.region('europe-west1').firestore
+/*exports.onCustomerCreate = functions.region('europe-west1').firestore
     .document('customers/{customerId}')
-    .onCreate(async (snap, context) => {
-
+    .onCreate(async (snap) => {
         await sendMail(snap.id)
-    });
+    });*/
 
 async function sendSms(customerId) {
     const customer = (await admin.firestore().collection('customers').doc(customerId).get()).data();
@@ -202,7 +200,6 @@ async function sendMail(customerId, autoRenew = false) {
         });
     }
 
-    return
 }
 
 exports.signPdfs = functions.region('europe-west1').https.onRequest(async (request, response) => {
@@ -224,7 +221,7 @@ exports.signPdfs = functions.region('europe-west1').https.onRequest(async (reque
 
         const customerDoc = admin.firestore().collection('customers').doc(request.body.userId)
         const customer = (await customerDoc.get()).data();
-        if (customer==undefined || customer.token !== request.body.token) {
+        if (customer===undefined || customer.token !== request.body.token) {
             response.status(400).send('Invalid token');
             return;
         }
@@ -296,15 +293,15 @@ exports.signPdfs = functions.region('europe-west1').https.onRequest(async (reque
             token: null
         })
 
-        if (customer.email != undefined || customer.email != null) {
+        if (customer.email !== undefined) {
             await sendMailWithAttachments(vollmachtPdfUrl, bprotokollPdfUrl, customer.email, customer.name + " " + customer.surname);
         }
     });
 });
 
 
-exports.weekdayJob = functions.pubsub.schedule('0 9 9 * *').timeZone('Europe/Berlin').onRun((context) => {
-    checkAndSendMail()
+exports.weekdayJob = functions.pubsub.schedule('0 9 9 * *').timeZone('Europe/Berlin').onRun(() => {
+    return checkAndSendMail()
 });
 
 async function checkAndSendMail() {
@@ -319,7 +316,7 @@ async function checkAndSendMail() {
             console.log(doc.id)
             const customer = doc.data();
             console.log(customer.email)
-            if (customer.email != undefined || customer.email != null) {
+            if (customer.email !== undefined) {
                 sendMail(doc.id, true);
             }
         });
@@ -354,77 +351,79 @@ async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail
 }
 
 exports.getAllUsers = functions.region('europe-west1').runWith({timeoutSeconds: 540, memory: '8GB'}).https.onRequest(async (request, response) => {
-    const authorization = request.headers.authorization;
-    const apiKey = authorization.split('Bearer ')[1];
+    return cors(request, response, async () => {
+        const authorization = request.headers.authorization;
+        const apiKey = authorization.split('Bearer ')[1];
 
-    if (apiKey != config.FUNCTIONS_KEY) {
-        return response.status(400).send('Ungültiger Request: Authorization key ist falsch.');
-    }
-    const customers = await admin.firestore().collection('customers').get();
-    let csvData = 'Nachname;Name;Geburtsdatum;PLZ;Ort;Strasse;Begin;Ablauf;AdivsorName;Telefon;E-Mail;Vollmacht;Beratungsprotokoll\n';
-
-    const formatBirthdate = (birthdate) => {
-        if (!birthdate) return '';
-
-        let date;
-        if (typeof birthdate.toDate === 'function') {
-            date = birthdate.toDate();
-        } else if (birthdate instanceof Date) {
-            date = birthdate;
-        } else {
-            date = new Date(birthdate);
+        if (apiKey !== config.FUNCTIONS_KEY) {
+            return response.status(400).send('Ungültiger Request: Authorization key ist falsch.');
         }
+        const customers = await admin.firestore().collection('customers').get();
+        let csvData = 'Nachname;Name;Geburtsdatum;PLZ;Ort;Strasse;Begin;Ablauf;AdivsorName;Telefon;E-Mail;Vollmacht;Beratungsprotokoll\n';
 
-        date.setHours(date.getHours() + 12);
+        const formatBirthdate = (birthdate) => {
+            if (!birthdate) return '';
 
-        if (isNaN(date)) return 'Ungültiges Datum';
+            let date;
+            if (typeof birthdate.toDate === 'function') {
+                date = birthdate.toDate();
+            } else if (birthdate instanceof Date) {
+                date = birthdate;
+            } else {
+                date = new Date(birthdate);
+            }
 
-        return date.toLocaleDateString('de-AT');
-    };
+            date.setHours(date.getHours() + 12);
 
-    const formatTimestamp = (timestamp) => {
-        if (!timestamp) return '';
+            if (isNaN(date)) return 'Ungültiges Datum';
 
-        const date = timestamp.toDate ? timestamp.toDate() : timestamp;
-        return date instanceof Date ? date.toLocaleDateString('de-AT') : '';
-    };
-
-    const customerData = (customer, signature) => {
-        return {
-            surname: customer.surname || '',
-            name: customer.name || '',
-            birthdate: formatBirthdate(customer.birthdate),
-            zip: customer.zip || '',
-            city: customer.city || '',
-            street: customer.street || '',
-            begin: formatTimestamp(signature.data().signedAt),
-            ablauf: formatTimestamp(signature.data().bprotokollExp),
-            advisorName: customer.advisorName || '',
-            phone: customer.phone || '',
-            email: customer.email || '',
-            vollmacht: signature.data().vollmachtPdfUrl || '',
-            beratungsprotokoll: signature.data().bprotokollPdfUrl || '',
+            return date.toLocaleDateString('de-AT');
         };
-    };
 
-    for (let i = 0; i < customers.size; i++) {
-        const customer = customers.docs[i].data();
-        try {
-            const signature = await admin.firestore().collection('customers').doc(customers.docs[i].id).collection('signatures').doc(customer.lastSignatureId).get();
+        const formatTimestamp = (timestamp) => {
+            if (!timestamp) return '';
 
-            const cData = customerData(customer, signature);
+            const date = timestamp.toDate ? timestamp.toDate() : timestamp;
+            return date instanceof Date ? date.toLocaleDateString('de-AT') : '';
+        };
 
-            csvData += `${cData.surname};${cData.name};${cData.birthdate};${cData.zip};${cData.city};${cData.street};${cData.begin};${cData.ablauf};${cData.advisorName};${cData.phone};${cData.email};${cData.vollmacht};${cData.beratungsprotokoll}\n`
-        } catch (e) {
-            console.log(e)
+        const customerData = (customer, signature) => {
+            return {
+                surname: customer.surname || '',
+                name: customer.name || '',
+                birthdate: formatBirthdate(customer.birthdate),
+                zip: customer.zip || '',
+                city: customer.city || '',
+                street: customer.street || '',
+                begin: formatTimestamp(signature.data().signedAt),
+                ablauf: formatTimestamp(signature.data().bprotokollExp),
+                advisorName: customer.advisorName || '',
+                phone: customer.phone || '',
+                email: customer.email || '',
+                vollmacht: signature.data().vollmachtPdfUrl || '',
+                beratungsprotokoll: signature.data().bprotokollPdfUrl || '',
+            };
+        };
+
+        for (let i = 0; i < customers.size; i++) {
+            const customer = customers.docs[i].data();
+            try {
+                const signature = await admin.firestore().collection('customers').doc(customers.docs[i].id).collection('signatures').doc(customer.lastSignatureId).get();
+
+                const cData = customerData(customer, signature);
+
+                csvData += `${cData.surname};${cData.name};${cData.birthdate};${cData.zip};${cData.city};${cData.street};${cData.begin};${cData.ablauf};${cData.advisorName};${cData.phone};${cData.email};${cData.vollmacht};${cData.beratungsprotokoll}\n`
+            } catch (e) {
+                console.log(e)
+            }
         }
-    }
-    return response
-        .set({
-            "Content-Type": "text/csv",
-            "Content-Disposition": `attachment; filename="users.csv"`,
-        })
-        .send(csvData)
+        return response
+            .set({
+                "Content-Type": "text/csv",
+                "Content-Disposition": `attachment; filename="users.csv"`,
+            })
+            .send(csvData)
+    });
 });
 
 exports.aaabbbccc = functions.region('europe-west1').https.onRequest(async (request, response) => {
@@ -439,7 +438,7 @@ exports.aaabbbccc = functions.region('europe-west1').https.onRequest(async (requ
             let street = customer.street;
             let country = customer.country ?? '';
 
-            if (street == undefined || street == null || street == '') {
+            if (street === undefined || street == null || street === '') {
                 street = country;
             }
 
@@ -496,7 +495,7 @@ exports.removeAdvisor = functions.region('europe-west1').https.onRequest(async (
         const requiredFields = ['myId', 'idToDelete'];
 
         for (const field of requiredFields) {
-            if (request.body[field] == undefined || request.body[field] == null) {
+            if (request.body[field] === undefined || request.body[field] == null) {
                 console.log(`Missing ${field} field`)
                 response.status(400).send(`Missing ${field} field`);
                 return;
@@ -506,7 +505,7 @@ exports.removeAdvisor = functions.region('europe-west1').https.onRequest(async (
         const myId = request.body.myId;
         const idToDelete = request.body.idToDelete;
         const a = (await admin.firestore().collection('advisors').doc(myId).get()).data();
-        if (a == undefined || a == null || !a.role || a.role !== 'admin') {
+        if (a === undefined || a == null || !a.role || a.role !== 'admin') {
             response.status(400).send('Invalid Request');
             return;
         }
@@ -525,7 +524,7 @@ exports.sendCustomerNotification = functions.region('europe-west1').https.onRequ
         const requiredFields = ['customerId', 'token', 'email', 'sms'];
 
         for (const field of requiredFields) {
-            if (request.body[field] == undefined || request.body[field] == null) {
+            if (request.body[field] === undefined || request.body[field] == null) {
                 console.log(`Missing ${field} field`)
                 response.status(400).send(`Missing ${field} field`);
                 return;
