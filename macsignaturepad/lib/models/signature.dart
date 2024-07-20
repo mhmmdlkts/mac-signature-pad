@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:macsignaturepad/services/pdf_service.dart';
 
 import '../services/advisor_service.dart';
 import '../services/firestore_paths_service.dart';
@@ -55,6 +56,29 @@ class Signature implements Comparable {
     officeDownloaded: json['officeDownloaded']??false,
   );
 
+  factory Signature.manuel(
+      String customerId,
+      String bprotokollPdfUrl,
+      String vollmachtPdfUrl,
+  ) {
+    String id = FirestorePathsService.getSignatureCol(customerId: customerId).doc().id;
+    return Signature(
+      id: id,
+      bprotokollPdfUrl: bprotokollPdfUrl,
+      vollmachtPdfUrl: vollmachtPdfUrl,
+      bprotokollVersion: currentBprotokollVersion,
+      vollmachtVersion: currentVollmachtVersion,
+      officeDownloaded: false,
+      advisorDownloaded: true,
+      advisorId: AdvisorService.advisor?.id??'',
+      advisorName: AdvisorService.advisor?.name??'',
+      signature: '',
+      signedAt: Timestamp.now(),
+      vollmachtExp: Timestamp.fromDate(DateTime.now().add(const Duration(days: 365 * 3))),
+      bprotokollExp: Timestamp.fromDate(DateTime.now().add(const Duration(days: 365 * 3))),
+    );
+  }
+
   Color get bprotokollExpiresDateColor => _getColorByDate(bprotokollExp);
   Color get vollmachtExpiresDateColor => _getColorByDate(vollmachtExp);
   String get readableExpBprotokoll => DateFormat('dd.MM.yyyy').format(bprotokollExp.toDate());
@@ -104,4 +128,25 @@ class Signature implements Comparable {
       return true;
     }
   }
+
+
+
+  Future push(String customerId) async {
+    await FirestorePathsService.getSignatureDoc(customerId: customerId, signatureId: id).set(toJson());
+  }
+
+  Map<String, dynamic> toJson() => {
+    'signature': signature,
+    'advisorName': advisorName,
+    'advisorId': advisorId,
+    'vollmachtVersion': vollmachtVersion,
+    'bprotokollVersion': bprotokollVersion,
+    'bprotokollPdfUrl': bprotokollPdfUrl,
+    'vollmachtPdfUrl': vollmachtPdfUrl,
+    'signedAt': signedAt,
+    'vollmachtExp': vollmachtExp,
+    'bprotokollExp': bprotokollExp,
+    'advisorDownloaded': advisorDownloaded,
+    'officeDownloaded': officeDownloaded,
+  };
 }

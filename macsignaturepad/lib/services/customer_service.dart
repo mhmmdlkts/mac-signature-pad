@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:macsignaturepad/services/advisor_service.dart';
 
@@ -109,14 +110,50 @@ class CustomerService {
     // notifyListeners();
   }
 
-  static Future addNewCustomer(Customer customer, {bool sms = false}) async {
+  static Future addNewCustomer(Customer customer, {bool sms = false, bool email = false, Uint8List? bprotokolManuellBytes, Uint8List? vollmachtManuelBytes}) async {
     await customer.push();
     String key = '${DateTime.now().month}-${DateTime.now().year}';
     customersMap[key] ??= [];
     customersMap[key]?.add(customer);
     customersMap[key]?.sort();
     try {
-      await sendNotificationToCustomer(customer: customer, email: true, sms: sms);
+      if (email || sms) {
+        await sendNotificationToCustomer(customer: customer, email: email, sms: sms);
+      }
+      String vollmachtDownloadUrl = '';
+      String protokollDownloadUrl = '';
+      FirebaseStorage storage = FirebaseStorage.instance;
+      // Upload für Protokoll PDF
+      if (bprotokolManuellBytes != null) {
+        try {
+          Reference ref = storage.ref('${customer.id}/pdfs/protokoll_v1.pdf');
+          await ref.putData(bprotokolManuellBytes);
+          protokollDownloadUrl = await ref.getDownloadURL();
+          print('Protokoll hochgeladen');
+        } catch (e) {
+          print('Fehler beim Hochladen des Protokolls: $e');
+        }
+      }
+
+      // Upload für Vollmacht PDF
+      if (vollmachtManuelBytes != null) {
+        try {
+          Reference ref = storage.ref('${customer.id}/pdfs/vollmacht_v1.pdf');
+          await ref.putData(vollmachtManuelBytes);
+          vollmachtDownloadUrl = await ref.getDownloadURL();
+          print('Vollmacht hochgeladen');
+        } catch (e) {
+          print('Fehler beim Hochladen der Vollmacht: $e');
+        }
+      }
+
+      if (vollmachtDownloadUrl.isNotEmpty || protokollDownloadUrl.isNotEmpty) {
+        Signature signature = Signature.manuel(customer.id, protokollDownloadUrl, vollmachtDownloadUrl);
+        await signature.push(customer.id);
+        await FirestorePathsService.getCustomerDoc(customerId: customer.id).update({
+          'lastSignatureId': signature.id
+        });
+      }
     } catch (e) {
       if (kDebugMode) {
         print(e);
@@ -126,5 +163,31 @@ class CustomerService {
 
   static cleanCache() {
     customersMap.clear();
+  }
+
+  static Future<List<Customer>> searchCustomers(String query) async {
+    List<Customer> results = [];
+    CollectionReference col = FirestorePathsService.getCustomerCol();
+    try {
+
+      QuerySnapshot snapshot = await col
+          .where('searchKey', arrayContains: query.toLowerCase())
+          .get();
+      for (var doc in snapshot.docs) {
+        Customer customer = Customer.fromJson(doc.data() as Map<String, dynamic>, doc.id);
+        results.add(customer);
+      }
+    } catch (e) {
+      print(e);
+    }
+    results.sort();
+    List<Future> futures = [];
+
+    for (var customer in results) {
+      futures.add(customer.initLastSignature());
+    }
+
+    await Future.wait(futures);
+    return results;
   }
 }

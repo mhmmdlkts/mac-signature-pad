@@ -9,8 +9,6 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-
-
 admin.initializeApp();
 
 
@@ -80,9 +78,19 @@ exports.getPdf = functions.runWith({
             placeholders[element.code+'-change'] = element.status === 2?'x':'';
             placeholders[element.code+'-note'] = element.notes??'';
         }
+        const analysisOptions = customer.analysisOptions??[];
+        for (let i = 0; i < analysisOptions.length; i++) {
+            const element = analysisOptions[i];
+            placeholders[element.code] = element.value;
+        }
+        // extraInfo is a map with key value pairs
+        const extraInfo = customer.extraInfo??{};
+        for (const key in extraInfo) {
+            placeholders[key] = extraInfo[key].value === true?'x':'';
+        }
 
         try {
-            const url = 'https://europe-west1-mac-signature.cloudfunctions.net/createPdf';
+            const url = 'https://europe-west1-mac-signature.cloudfunctions.net/createPdf5';
             const res = await axios.post(url, {
                 pdf_name: pdf_name,
                 placeholders: placeholders
@@ -229,7 +237,7 @@ exports.signPdfs = functions.region('europe-west1').https.onRequest(async (reque
         const bprotokollExp = new Date(Date.now() + howManyDaysValidBprotokoll * 24 * 60 * 60 * 1000);
         const vollmachtExp = new Date(Date.now() + howManyDaysValidVollmacht * 24 * 60 * 60 * 1000);
 
-        const versionProtokoll = 'v1';
+        const versionProtokoll = 'v2';
         const versionVollmacht = 'v1';
 
         response.status(200).send('Success');
@@ -350,6 +358,24 @@ async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail
         });
 }
 
+exports.initSearchKeyForAll = functions.region('europe-west1').runWith({timeoutSeconds: 540, memory: '8GB'}).https.onRequest(async (request, response) => {
+    return cors(request, response, async () => {
+        const customers = await admin.firestore().collection('customers').get();
+        // set "searchKey" for all customers all lowerCase (name surname phone email)
+        for (let i = 0; i < customers.size; i++) {
+            const customer = customers.docs[i].data();
+            await admin.firestore().collection('customers').doc(customers.docs[i].id).update({
+                searchKey: [
+                    customer.name.trim().toLowerCase(),
+                    customer.surname.trim().toLowerCase(),
+                    customer.phone.trim().toLowerCase(),
+                    customer.email.trim().toLowerCase()
+                ]
+            });
+        }
+    });
+});
+
 exports.getAllUsers = functions.region('europe-west1').runWith({timeoutSeconds: 540, memory: '8GB'}).https.onRequest(async (request, response) => {
     return cors(request, response, async () => {
         const authorization = request.headers.authorization;
@@ -417,49 +443,14 @@ exports.getAllUsers = functions.region('europe-west1').runWith({timeoutSeconds: 
                 console.log(e)
             }
         }
+        const bom = '\uFEFF';
         return response
             .set({
-                "Content-Type": "text/csv",
+                "Content-Type": "text/csv; charset=utf-8",
                 "Content-Disposition": `attachment; filename="users.csv"`,
             })
-            .send(csvData)
+            .send(bom + csvData);
     });
-});
-
-exports.aaabbbccc = functions.region('europe-west1').https.onRequest(async (request, response) => {
-
-    const customers = await admin.firestore().collection('customers').get();
-
-    for (let i = 0; i < customers.size; i++) {
-        const customer = customers.docs[i].data();
-        try {
-            let bprotokollExp = null;
-            let vollmachtExp = null;
-            let street = customer.street;
-            let country = customer.country ?? '';
-
-            if (street === undefined || street == null || street === '') {
-                street = country;
-            }
-
-            try {
-                const signature = await admin.firestore().collection('customers').doc(customers.docs[i].id).collection('signatures').doc(customer.lastSignatureId).get();
-                bprotokollExp = signature.data().bprotokollExp;
-                vollmachtExp = signature.data().vollmachtExp;
-            } catch (e) {
-            }
-
-            await admin.firestore().collection('customers').doc(customers.docs[i].id).update({
-                'bprotokollExp': bprotokollExp,
-                'vollmachtExp': vollmachtExp,
-                'street': street,
-                'country': admin.firestore.FieldValue.delete()
-            });
-        } catch (e) {
-            console.log(e)
-        }
-    }
-    return response.send(csvData)
 });
 
 exports.getUserData = functions.region('europe-west1').https.onRequest(async (request, response) => {

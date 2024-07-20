@@ -10,6 +10,7 @@ import 'package:macsignaturepad/services/customer_service.dart';
 
 import '../services/advisor_service.dart';
 import '../services/firestore_paths_service.dart';
+import 'analysis_details.dart';
 
 class Customer implements Comparable {
   late String id;
@@ -35,6 +36,8 @@ class Customer implements Comparable {
   String? uid;
   String? stnr;
   List<ServiceDetails>? details;
+  List<AnalysisDetails>? analysisOptions;
+  Map<String, Map>? extraInfo;
 
   factory Customer.create({
     required String name,
@@ -49,6 +52,8 @@ class Customer implements Comparable {
     String? uid,
     String? stnr,
     List<ServiceDetails>? details,
+    List<AnalysisDetails>? analysisOptions,
+    Map<String, Map>? extraInfo
   }) => Customer(
     advisorId: AdvisorService.advisor?.id??'',
     advisorName: AdvisorService.advisor?.name??'',
@@ -64,6 +69,8 @@ class Customer implements Comparable {
     nextTermin: nextTermin,
     stnr: stnr,
     details: details,
+    analysisOptions: analysisOptions,
+    extraInfo: extraInfo,
     token: generateToken(),
     ts: Timestamp.now(),
   );
@@ -91,6 +98,8 @@ class Customer implements Comparable {
     this.stnr,
     this.token,
     this.details,
+    this.analysisOptions,
+    this.extraInfo,
   }) {
     idd ??= FirestorePathsService.getCustomerCol().doc().id;
     id = idd;
@@ -112,6 +121,8 @@ class Customer implements Comparable {
     Timestamp ts = json['ts'] is Timestamp ? json['ts'] : convertMapToTimestamp(json['ts']);
     Timestamp? nextTermin = json['nextTermin']==null?null:(json['nextTermin'] is Timestamp ? json['nextTermin'] : convertMapToTimestamp(json['nextTermin']));
     List<ServiceDetails>? details = json['details'] == null ? null : List<ServiceDetails>.from(json['details'].map((x) => ServiceDetails.fromJson(x)));
+
+    List<AnalysisDetails>? analysisOptions = json['analysisOptions'] == null ? null : List<AnalysisDetails>.from(json['analysisOptions'].map((x) => AnalysisDetails.fromJson(x)));
     String street = json['street'];
     return Customer(
       idd: id,
@@ -134,6 +145,7 @@ class Customer implements Comparable {
       stnr: json['stnr'],
       token: json['token'],
       details: details,
+      analysisOptions: analysisOptions,
       nextTermin: nextTermin,
       ts: ts,
     );
@@ -141,6 +153,12 @@ class Customer implements Comparable {
 
   bool get isDownloaded => lastSignature?.isDownloaded??true;
   bool get hasBackOfficeDownloaded => lastSignature?.officeDownloaded??true;
+
+  String get readableSmsSentTime => smsSentTime==null?'----------':DateFormat('dd.MM.yyyy HH:mm').format(smsSentTime!.toDate());
+  String get readableEmailSentTime => emailSentTime==null?'----------':DateFormat('dd.MM.yyyy HH:mm').format(emailSentTime!.toDate());
+
+  Color get smsSentDateColor => (smsSentTime?.toDate().isAfter(DateTime.now().subtract(const Duration(minutes: 15)))??false)?Colors.green:Colors.red;
+  Color get emailSentDateColor => (emailSentTime?.toDate().isAfter(DateTime.now().subtract(const Duration(minutes: 15)))??false)?Colors.green:Colors.red;
 
   String fileName(String originalName) {
     originalName = '$surname $name $originalName';
@@ -212,17 +230,17 @@ class Customer implements Comparable {
   }
 
   Map<String, dynamic> toJson() => {
-    'name': name,
-    'surname': surname,
-    'phone': phone,
-    'email': email,
-    'advisorId': advisorId,
-    'advisorName': advisorName,
+    'name': name.trim(),
+    'surname': surname.trim(),
+    'phone': phone.trim(),
+    'email': email?.trim(),
+    'advisorId': advisorId.trim(),
+    'advisorName': advisorName.trim(),
     'ts': ts,
     'birthdate': birthdate,
-    'zip': zip,
-    'city': city,
-    'street': street,
+    'zip': zip.trim(),
+    'city': city.trim(),
+    'street': street.trim(),
     'uid': uid,
     'stnr': stnr,
     'vollmachtExp': vollmachtExp,
@@ -230,7 +248,17 @@ class Customer implements Comparable {
     'token': token,
     'nextTermin': nextTermin,
     'details': details?.map((e) => e.toJson()).toList(),
+    'analysisOptions': analysisOptions?.map((e) => e.toJson()).toList(),
+    'extraInfo': extraInfo,
+    'searchKey': searchKey
   };
+
+  List<String> get searchKey => [
+    name.trim().toLowerCase(),
+    surname.trim().toLowerCase(),
+    phone.trim().toLowerCase(),
+    email?.trim().toLowerCase(),
+  ].where((test) => test != null).toList() as List<String>;
 
   Future push() async => await FirestorePathsService.getCustomerDoc(customerId: id).set(toJson());
 

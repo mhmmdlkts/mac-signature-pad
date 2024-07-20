@@ -24,7 +24,15 @@ class NoSignatureScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 20),
                 Text(
-                  "Es gibt nichts zum Unterschreiben.",
+                  "Geschafft",
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  "Es gibt nichts zum Unterschreiben",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,

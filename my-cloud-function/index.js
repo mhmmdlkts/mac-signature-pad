@@ -1,10 +1,10 @@
-// my-cloud-function % gcloud functions deploy createPdf --runtime nodejs16 --trigger-http --allow-unauthenticated --region europe-west1 --memory=2048MB --timeout=540s --docker-registry=artifact-registry
+// my-cloud-function % gcloud functions deploy createPdf_ --runtime nodejs18 --trigger-http --allow-unauthenticated --region europe-west1 --memory=2048MB --timeout=540s --docker-registry=artifact-registry --no-gen2
 const puppeteer = require('puppeteer-core');
 const chromium = require('chrome-aws-lambda');
 const fs = require('fs').promises;
 const path = require('path');
 
-exports.createPdf = async (req, res) => {
+exports.createPdf5 = async (req, res) => {
     try {
         const { pdf_name, placeholders } = req.body;
         if (!pdf_name) {
@@ -25,7 +25,6 @@ exports.createPdf = async (req, res) => {
 
         const page = await browser.newPage();
 
-        // HTML-Datei als String lesen
         const htmlFilePath = path.join(__dirname, pdf_name + '.html');
         let htmlContent = await fs.readFile(htmlFilePath, 'utf8');
 
@@ -58,7 +57,7 @@ exports.createPdf = async (req, res) => {
         res.setHeader('Content-Type', 'text/plain');
         res.send(pdfBase64);
     } catch (error) {
-        console.error('Fehler beim Erstellen des PDFs:', error);
+        console.error('Fehler beim Erstellen des PDFss:', error);
         res.status(500).send('Interner Serverfehler');
     }
 };

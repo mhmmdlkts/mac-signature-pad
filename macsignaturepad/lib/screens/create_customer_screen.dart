@@ -1,11 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:macsignaturepad/models/service_details.dart';
 
 import 'package:macsignaturepad/services/all_services_service.dart';
 import 'package:macsignaturepad/services/customer_service.dart';
+import '../models/analysis_details.dart';
 import '../models/customer.dart';
 import 'package:intl/intl.dart';
 
@@ -17,11 +21,27 @@ class CreateCustomerScreen extends StatefulWidget {
 }
 
 class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
-  bool _isLoading = false ;
+  bool _isLoading = false;
   bool isCompany = false;
   bool _sendSms = false;
-  final bool _sendEmail = true;
+  bool _sendEmail = true;
+  bool _uploadDoc = false;
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _surnameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _birthdateController = TextEditingController();
+  final TextEditingController _zipController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _streetController = TextEditingController();
+  final TextEditingController _uidController = TextEditingController();
+  final TextEditingController _stnrController = TextEditingController();
+  final TextEditingController _nextTerminController = TextEditingController();
+
+  Uint8List? bprotokolManuellBytes;
+  Uint8List? vollmachtManuelBytes;
+
   String _name = '';
   String _surname = '';
   String _countryCode = '+43';
@@ -37,6 +57,25 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   String errorMessage = '';
   final ValueNotifier<String> _notesNotifier = ValueNotifier<String>('');
   final Map<String, List<ServiceDetails>> _insuranceOptions = AllServicesService.getNewMap();
+  final List<AnalysisDetails> _analysisOptions = AllServicesService.getNewMapAnalysisDetails();
+  final Map<String, Map> _erteilterAuftrag = {
+    'ertei-bekan-yes': {
+      'title': 'Bekanntgabe Vorversicherer',
+      'value': true
+    },
+    'ertei-einre-yes': {
+      'title': 'Einreichung Neuantrag wie besprochen',
+      'value': true
+    },
+    'ertei-einho-yes': {
+      'title': 'Einholung Polizzenauskünfte',
+      'value': true
+    },
+    'ertei-kündi-yes': {
+      'title': 'Kündigung Vorverträge',
+      'value': true
+    }
+  };
 
   @override
   void initState() {
@@ -48,6 +87,14 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
 
   void _saveForm() async {
     if (_formKey.currentState!.validate()) {
+      if (_uploadDoc && (bprotokolManuellBytes == null || vollmachtManuelBytes == null)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bitte laden Sie die Dokumente hoch'),
+          ),
+        );
+        return;
+      }
       if (!isInsuranceOptionsValid()) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -68,21 +115,26 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
       }
       try {
         await CustomerService.addNewCustomer(
-            Customer.create(
-              name: _name,
-              surname: _surname,
-              phone: _countryCode + _phone,
-              email: _email,
-              birthdate: _birthdate!,
-              zip: _zip,
-              city: _city,
-              street: _street,
-              uid: _uid,
-              stnr: _stnr,
-              nextTermin: _nextTermin,
-              details: _insuranceOptions.values.expand((element) => element).toList(),
-            ),
-            sms: _sendSms
+          Customer.create(
+            name: _name,
+            surname: _surname,
+            phone: _countryCode + _phone,
+            email: _email,
+            birthdate: _birthdate!,
+            zip: _zip,
+            city: _city,
+            street: _street,
+            uid: _uid,
+            stnr: _stnr,
+            nextTermin: _nextTermin,
+            details: _insuranceOptions.values.expand((element) => element).toList(),
+            analysisOptions: _analysisOptions,
+            extraInfo: _erteilterAuftrag
+          ),
+          sms: _sendSms,
+          email: _sendEmail,
+          bprotokolManuellBytes: bprotokolManuellBytes,
+          vollmachtManuelBytes: vollmachtManuelBytes,
         );
 
         if (mounted) {
@@ -99,6 +151,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    tryParseOldCustomer();
     if (FirebaseAuth.instance.currentUser == null) {
       return const Text('Nicht authentifiziert');
     }
@@ -141,6 +194,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
 
                   TextFormField(
+                    controller: _nameController,
                     textCapitalization: TextCapitalization.words,
                     keyboardType: TextInputType.name,
                     decoration: InputDecoration(labelText: isCompany?'Firmenname':'Name'),
@@ -156,6 +210,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
                   if (!isCompany)
                     TextFormField(
+                      controller: _surnameController,
                       textCapitalization: TextCapitalization.words,
                       keyboardType: TextInputType.name,
                       decoration: const InputDecoration(labelText: 'Nachname'),
@@ -185,6 +240,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                       ),
                       Expanded(
                         child: TextFormField(
+                          controller: _phoneController,
                           keyboardType: TextInputType.phone,
                           decoration: const InputDecoration(labelText: 'Telefonnummer'),
                           onSaved: (value) {
@@ -207,6 +263,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     ],
                   ),
                   TextFormField(
+                    controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(labelText: 'E-Mail'),
                     onSaved: (value) {
@@ -223,6 +280,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     },
                   ),
                   TextFormField(
+                    controller: _birthdateController,
                     keyboardType: TextInputType.datetime,
                     decoration: const InputDecoration(labelText: 'Geburtsdatum'),
                     onSaved: (value) {
@@ -239,6 +297,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     },
                   ),
                   TextFormField(
+                    controller: _zipController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'Postleitzahl'),
                     onSaved: (value) {
@@ -252,6 +311,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     },
                   ),
                   TextFormField(
+                    controller: _cityController,
                     textCapitalization: TextCapitalization.words,
                     keyboardType: TextInputType.name,
                     decoration: const InputDecoration(labelText: 'Stadt'),
@@ -266,6 +326,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     },
                   ),
                   TextFormField(
+                    controller: _streetController,
                     textCapitalization: TextCapitalization.words,
                     keyboardType: TextInputType.streetAddress,
                     decoration: const InputDecoration(labelText: 'Straße'),
@@ -281,6 +342,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   ),
                   if (isCompany)
                     TextFormField(
+                      controller: _uidController,
                       textCapitalization: TextCapitalization.characters,
                       decoration: const InputDecoration(labelText: 'UID'),
                       onSaved: (value) {
@@ -289,6 +351,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     ),
                   if (isCompany)
                     TextFormField(
+                      controller: _stnrController,
                       decoration: const InputDecoration(labelText: 'Steuer Nummer'),
                       onSaved: (value) {
                         _stnr = value;
@@ -298,13 +361,52 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
               ),
             ),
             Container(height: 20),
+            ..._erteilterAuftrag.keys.map((e) => Row(
+              children: [
+                Checkbox(value: _erteilterAuftrag[e]!['value'], onChanged: (val) {
+                  setState(() {
+                    _erteilterAuftrag[e]!['value'] = !_erteilterAuftrag[e]!['value'];
+                  });
+                }),
+                Text(_erteilterAuftrag[e]!['title'])
+              ],
+            )),
+            Container(height: 20),
+            ..._analysisOptions.map((e) => Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(e.name, style: TextStyle(fontSize: 20),),
+                Wrap(
+                  children: e.options.keys.map((key) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        value: e.options[key],
+                        onChanged: (val) {
+                          setState(() {
+                            e.options[key] = val??false;
+                          });
+                        },
+                      ),
+                      Text(key),
+                      Container(width: 20,)
+                    ],
+                  )).toList(),
+                ),
+                Divider()
+              ],
+            )),
+            Container(height: 20),
             ..._insuranceOptions.keys.map((option) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(height: 20),
-                  Text('$option:', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Container(height: 10),
+                  if (!duplicateCustomer)
+                    Text('$option:', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  if (!duplicateCustomer)
+                    Container(height: 10),
                   ListView.separated(
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
@@ -404,7 +506,11 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   children: [
                     Checkbox(
                         value: _sendEmail,
-                        onChanged: null
+                        onChanged: _uploadDoc?null:(val) {
+                          setState(() {
+                            _sendEmail = val??false;
+                          });
+                        }
                     ),
                     const Icon(Icons.email),
                   ],
@@ -414,7 +520,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                   children: [
                     Checkbox(
                         value: _sendSms,
-                        onChanged: (val) {
+                        onChanged: _uploadDoc?null:(val) {
                           setState(() {
                             _sendSms = val??false;
                           });
@@ -423,11 +529,96 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     const Icon(Icons.perm_phone_msg),
                   ],
                 ),
-                Container(height: 10,),
+                Container(width: 30,),
+                Row(
+                  children: [
+                    Checkbox(
+                        value: _uploadDoc,
+                        onChanged: (val) {
+                          if (val??false) {
+                            _sendEmail = false;
+                            _sendSms = false;
+                          }
+                          setState(() {
+                            _uploadDoc = val??false;
+                          });
+                        }
+                    ),
+                    const Icon(Icons.upload_file),
+                  ],
+                ),
               ],
             ),
             if (errorMessage.isNotEmpty)
               Text(errorMessage, style: const TextStyle(color: Colors.red)),
+            if (_uploadDoc)
+              Column(
+                children: [
+                  Column(
+                    children: [
+                      if (bprotokolManuellBytes != null)
+                        Row(
+                          children: [
+                            Text('Beratungsprotokoll.pdf'),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  bprotokolManuellBytes = null;
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            )
+                          ],
+                        ),
+                      Container(height: 10),
+                      if (bprotokolManuellBytes == null)
+                        ElevatedButton(
+                          onPressed: () async {
+                            FilePickerResult? result = await FilePicker.platform.pickFiles();
+                            if (result != null) {
+                              setState(() {
+                                bprotokolManuellBytes = result.files.single.bytes!;
+                              });
+                            }
+                          },
+                          child: const Text('Beratungsprtokoll hochladen'),
+                        ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      if (vollmachtManuelBytes != null)
+                        Row(
+                          children: [
+                            Text('Vollmacht.pdf'),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  vollmachtManuelBytes = null;
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            )
+                          ],
+                        ),
+                      Container(height: 10),
+                      if (vollmachtManuelBytes == null)
+                        ElevatedButton(
+                          onPressed: () async {
+                            FilePickerResult? result = await FilePicker.platform.pickFiles();
+                            if (result != null) {
+                              setState(() {
+                                vollmachtManuelBytes = result.files.single.bytes!;
+                              });
+                            }
+                          },
+                          child: const Text('Vollmacht hochladen'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            SizedBox(height: 20),
             ElevatedButton(
               onPressed: _isLoading?null:_saveForm,
               child: const Text('Speichern'),
@@ -539,5 +730,54 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
       }
     });
     return isValid;
+  }
+
+  bool triedParsing = false;
+  bool duplicateCustomer = false;
+  void tryParseOldCustomer() {
+    if (triedParsing) {
+      return;
+    }
+    Customer? customer = ModalRoute.of(context)!.settings.arguments as Customer?;
+    if (customer != null) {
+      duplicateCustomer = true;
+      _name = customer.name;
+      _nameController.text = customer.name;
+      _surname = customer.surname;
+      _surnameController.text = customer.surname;
+      _countryCode = customer.phone.split('').first == '+'?customer.phone.split('').sublist(0, 3).join():'+43';
+      _phone = customer.phone.split('').sublist(3).join();
+      _phoneController.text = customer.phone.split('').sublist(3).join();
+      _email = customer.email??'';
+      _emailController.text = customer.email??'';
+      _birthdate = customer.birthdate;
+      _birthdateController.text = DateFormat('dd.MM.yyyy').format(customer.birthdate!.toDate());
+      _zip = customer.zip;
+      _zipController.text = customer.zip;
+      _city = customer.city;
+      _cityController.text = customer.city;
+      _street = customer.street;
+      _streetController.text = customer.street;
+      _uid = customer.uid;
+      _uidController.text = customer.uid??'';
+      _stnr = customer.stnr;
+      _stnrController.text = customer.stnr??'';
+      _nextTermin = customer.nextTermin;
+      _nextTerminController.text = customer.nextTermin == null?'':DateFormat('dd.MM.yyyy').format(customer.nextTermin!.toDate());
+      _insuranceOptions.clear();
+      for (ServiceDetails element in customer.details??[]) {
+        _insuranceOptions[element.code] ??= [];
+        _insuranceOptions[element.code]!.add(element);
+      }
+      if (customer.analysisOptions != null) {
+        for (AnalysisDetails element in customer.analysisOptions!) {
+          for (var key in element.options.keys) {
+            _analysisOptions.firstWhere((e) => e.code == element.code).options[key] = element.options[key]??false;
+          }
+        }
+      }
+      setState(() {});
+    }
+    triedParsing = true;
   }
 }

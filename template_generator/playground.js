@@ -14,8 +14,8 @@ async function htmlToPdf(htmlPath, pdfPath) {
     await browser.close();
 }
 
-doIt('vollmacht_v1');
-doIt('protokoll_v1');
+//doIt('vollmacht_v1');
+doIt('protokoll_v2');
 
 async function doIt(fileName) {
     const htmlPath = '/Users/mali/flutter_projects/macsignaturepad_project/template_generator/' + fileName + '.html';

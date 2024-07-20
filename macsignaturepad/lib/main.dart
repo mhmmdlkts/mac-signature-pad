@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:macsignaturepad/decoration/colors.dart';
+import 'package:macsignaturepad/models/customer.dart';
 import 'package:macsignaturepad/screens/admin_screen.dart';
 import 'package:macsignaturepad/screens/advisors_screen.dart';
 import 'package:macsignaturepad/screens/create_customer_screen.dart';
