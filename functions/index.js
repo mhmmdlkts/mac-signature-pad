@@ -56,6 +56,8 @@ exports.getPdf = functions.runWith({
         const signature = request.body.signature != null ? request.body.signature : '';
         const readableNextTermin = customer.nextTermin!=null?getReadableDate(customer.nextTermin):'';
         const placeholders = {
+            title: customer.title || '',
+            anrede: customer.anrede || '',
             name: customer.name + " " + customer.surname,
             phone_email: customer.phone + " / " + customer.email,
             uid_stnr: customer.uid + " / " + customer.stnr,
@@ -68,6 +70,14 @@ exports.getPdf = functions.runWith({
             address: customer.zip + " " + customer.city + ", " + customer.street,
             date: now,
             signature: signature
+        }
+
+        if (placeholders.title.length > 0) {
+            placeholders.title = placeholders.title + ' ';
+        }
+
+        if (placeholders.anrede.length > 0) {
+            placeholders.anrede = placeholders.anrede + ' ';
         }
 
         const details = customer.details??[];
@@ -90,7 +100,7 @@ exports.getPdf = functions.runWith({
         }
 
         try {
-            const url = 'https://europe-west1-mac-signature.cloudfunctions.net/createPdf5';
+            const url = 'https://europe-west1-mac-signature.cloudfunctions.net/createPdf';
             const res = await axios.post(url, {
                 pdf_name: pdf_name,
                 placeholders: placeholders

@@ -17,6 +17,8 @@ class Customer implements Comparable {
   late Timestamp ts;
   late String advisorId;
   late String advisorName;
+  late String? title;
+  late String? anrede;
   late String name;
   late String surname;
   late String zip;
@@ -49,6 +51,8 @@ class Customer implements Comparable {
     required String phone,
     Timestamp? nextTermin,
     String? email,
+    String? title,
+    String? anrede,
     String? uid,
     String? stnr,
     List<ServiceDetails>? details,
@@ -57,6 +61,8 @@ class Customer implements Comparable {
   }) => Customer(
     advisorId: AdvisorService.advisor?.id??'',
     advisorName: AdvisorService.advisor?.name??'',
+    title: title,
+    anrede: anrede,
     name: name,
     surname: surname,
     birthdate: birthdate,
@@ -87,6 +93,8 @@ class Customer implements Comparable {
     required this.street,
     required this.ts,
     required this.phone,
+    this.title,
+    this.anrede,
     this.smsSentTime,
     this.nextTermin,
     this.vollmachtExp,
@@ -126,6 +134,8 @@ class Customer implements Comparable {
     String street = json['street'];
     return Customer(
       idd: id,
+      title: json['title'],
+      anrede: json['anrede'],
       name: json['name'],
       surname: json['surname'],
       phone: json['phone'],
@@ -230,6 +240,8 @@ class Customer implements Comparable {
   }
 
   Map<String, dynamic> toJson() => {
+    'title': title?.trim(),
+    'anrede': anrede?.trim(),
     'name': name.trim(),
     'surname': surname.trim(),
     'phone': phone.trim(),
@@ -253,12 +265,25 @@ class Customer implements Comparable {
     'searchKey': searchKey
   };
 
-  List<String> get searchKey => [
-    name.trim().toLowerCase(),
-    surname.trim().toLowerCase(),
-    phone.trim().toLowerCase(),
-    email?.trim().toLowerCase(),
-  ].where((test) => test != null).toList() as List<String>;
+  List<String> get searchKey {
+    List<String> keys = [];
+    keys.add(name.trim().toLowerCase());
+    keys.add(surname.trim().toLowerCase());
+    keys.add(phone.trim().toLowerCase());
+    if (email != null) keys.add(email!.trim().toLowerCase());
+    return keys;
+  }
+
+  String get readableName {
+    String totalName = '${name.trim()} ${surname.trim()}';
+    if (anrede != null && anrede!.isNotEmpty) {
+      totalName = '$anrede $name';
+    }
+    if (title != null && title!.isNotEmpty) {
+      totalName = '$title $totalName';
+    }
+    return totalName;
+  }
 
   Future push() async => await FirestorePathsService.getCustomerDoc(customerId: id).set(toJson());
 
@@ -303,6 +328,8 @@ class Customer implements Comparable {
     if (!doc.exists) return;
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     Customer customer = Customer.fromJson(data, doc.id);
+    title = customer.title;
+    anrede = customer.anrede;
     name = customer.name;
     surname = customer.surname;
     phone = customer.phone;

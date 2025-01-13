@@ -1,10 +1,23 @@
-// my-cloud-function % gcloud functions deploy createPdf_ --runtime nodejs18 --trigger-http --allow-unauthenticated --region europe-west1 --memory=2048MB --timeout=540s --docker-registry=artifact-registry --no-gen2
+/*
+gcloud functions delete createPdf --region europe-west1 --project=mac-signature -q && \
+gcloud functions deploy createPdf \
+  --runtime nodejs18 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --region europe-west1 \
+  --memory=2048MB \
+  --timeout=540s \
+  --docker-registry=artifact-registry \
+  --no-gen2 \
+  --project=mac-signature
+
+ */
 const puppeteer = require('puppeteer-core');
 const chromium = require('chrome-aws-lambda');
 const fs = require('fs').promises;
 const path = require('path');
 
-exports.createPdf5 = async (req, res) => {
+exports.createPdf = async (req, res) => {
     try {
         const { pdf_name, placeholders } = req.body;
         if (!pdf_name) {

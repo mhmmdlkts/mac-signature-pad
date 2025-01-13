@@ -27,6 +27,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   bool _sendEmail = true;
   bool _uploadDoc = false;
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -42,6 +43,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   Uint8List? bprotokolManuellBytes;
   Uint8List? vollmachtManuelBytes;
 
+  String? _title;
+  String? _anrede;
   String _name = '';
   String _surname = '';
   String _countryCode = '+43';
@@ -103,6 +106,14 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
         );
         return;
       }
+      if (_anrede == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bitte wählen Sie eine Anrede aus'),
+          ),
+        );
+        return;
+      }
       _formKey.currentState!.save();
 
       setState(() {
@@ -116,6 +127,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
       try {
         await CustomerService.addNewCustomer(
           Customer.create(
+            title: _title,
+            anrede: _anrede,
             name: _name,
             surname: _surname,
             phone: _countryCode + _phone,
@@ -193,17 +206,57 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                     ),
                   ),
 
+                  if (!isCompany)
+                    Row(
+                      children: [
+                        Radio<String>(
+                          value: 'Herr',
+                          groupValue: _anrede,
+                          onChanged: (String? value) {
+                            setState(() {
+                              _anrede = value;
+                              print(_anrede);
+                            });
+                          },
+                        ),
+                        Text('Herr'),
+                        Container(width: 10),
+                        Radio<String>(
+                          value: 'Frau',
+                          groupValue: _anrede,
+                          onChanged: (String? value) {
+                            setState(() {
+                              _anrede = value;
+                              print(_anrede);
+                            });
+                          },
+                        ),
+                        Text('Frau'),
+                      ],
+                    ),
+
+                  if (!isCompany)
+                    TextFormField(
+                      controller: _titleController,
+                      textCapitalization: TextCapitalization.words,
+                      keyboardType: TextInputType.name,
+                      decoration: InputDecoration(labelText: 'Titel'),
+                      onSaved: (value) {
+                        _title = value!;
+                      },
+                    ),
+
                   TextFormField(
                     controller: _nameController,
                     textCapitalization: TextCapitalization.words,
                     keyboardType: TextInputType.name,
-                    decoration: InputDecoration(labelText: isCompany?'Firmenname':'Name'),
+                    decoration: InputDecoration(labelText: isCompany?'Firmenname':'Vorname'),
                     onSaved: (value) {
                       _name = value!;
                     },
                     validator: (value) {
                       if (value!.isEmpty) {
-                        return 'Bitte einen Namen eingeben';
+                        return 'Bitte einen ${isCompany?'Firmenname':'Vorname'} eingeben';
                       }
                       return null;
                     },
@@ -741,6 +794,9 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
     Customer? customer = ModalRoute.of(context)!.settings.arguments as Customer?;
     if (customer != null) {
       duplicateCustomer = true;
+      _title = customer.title;
+      _titleController.text = customer.title??'';
+      _anrede = customer.anrede;
       _name = customer.name;
       _nameController.text = customer.name;
       _surname = customer.surname;

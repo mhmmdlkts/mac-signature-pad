@@ -525,7 +525,7 @@ class _AdminScreenState extends State<AdminScreen> {
                                 builder: (BuildContext context) {
                                   return AlertDialog(
                                     title: const Text('Kunden löschen'),
-                                    content: Text('Soll der Kunde ${customer.name} ${customer.surname} wirklich gelöscht werden?'),
+                                    content: Text('Soll der Kunde ${customer.readableName} wirklich gelöscht werden?'),
                                     actions: <Widget>[
                                       TextButton(
                                         child: const Text('Abbrechen'),
@@ -579,7 +579,7 @@ class _AdminScreenState extends State<AdminScreen> {
                           padding: const EdgeInsets.only(right: 5),
                           child: const Icon(Icons.circle, color: Colors.blue, size: 10,),
                         ),
-                      Text('${customer.name} ${customer.surname}', style: const TextStyle(fontSize:16, fontWeight: FontWeight.bold)),
+                      Text(customer.readableName, style: const TextStyle(fontSize:16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   if (AdvisorService.isAdmin && !customer.hasBackOfficeDownloaded)

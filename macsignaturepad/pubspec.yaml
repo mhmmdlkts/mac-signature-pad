@@ -6,38 +6,37 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.1.3 <4.0.0'
+  sdk: ^3.6.0
 
 dependencies:
   flutter:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  firebase_core: ^3.1.1
-  firebase_auth: ^5.1.1
-  cloud_firestore: ^5.0.2
-  firebase_storage: ^12.1.0
-  firebase_ui_auth: ^1.15.0
+  firebase_core: ^3.10.0
+  firebase_auth: ^5.4.0
+  cloud_firestore: ^5.6.1
+  firebase_storage: ^12.4.0
+  firebase_ui_auth: ^1.16.0
   hand_signature: ^3.0.3
-  lottie: ^3.1.2
-  country_code_picker: ^3.0.0
-  dio: ^5.4.3+1
-  url_launcher: ^6.3.0
-  file_picker: ^8.0.5
-  syncfusion_flutter_pdf: ^26.1.39
-  syncfusion_flutter_pdfviewer: ^26.1.39
+  lottie: ^3.3.1
+  country_code_picker: ^3.1.0
+  dio: ^5.7.0
+  url_launcher: ^6.3.1
+  file_picker: ^8.1.7
+  syncfusion_flutter_pdf: ^28.1.38
+  syncfusion_flutter_pdfviewer: ^28.1.38
   intl: ^0.19.0
 
-  # flutter_pdfview: ^1.2.7
-  # pdfx: ^2.5.0
-  # internet_file: ^1.2.0
+dependency_overrides:
+  win32: ^5.10.0
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^4.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
 

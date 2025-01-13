@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:hand_signature/signature.dart';
+// import 'package:syncfusion_flutter_signaturepad/signaturepad.dart';
 import 'package:macsignaturepad/decoration/colors.dart';
 import 'package:macsignaturepad/models/customer.dart';
 import 'package:macsignaturepad/screens/pdf_viewer_screen.dart';
@@ -64,7 +65,12 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
 
-    token = Uri.base.queryParameters["token"];
+    try {
+      token = Uri.base.queryParameters["token"];
+    } catch (e) {
+      token = null;
+    }
+    // token ??= "1735364710597000gQxGZechpnFitNhXrVfziEIv";
     if (token == null) {
       showDone = true;
       Navigator.pushReplacementNamed(context, '/');

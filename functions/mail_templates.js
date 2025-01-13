@@ -3,6 +3,7 @@ module.exports.getActionNeedMailOptions = function (from, to, name, url) {
     return {
         from: from,
         to: to,
+        bcc: from,
         subject: 'Aktion erforderlich: Mac Versicherung',
         html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto;">
@@ -12,6 +13,7 @@ module.exports.getActionNeedMailOptions = function (from, to, name, url) {
                 <a href="${url}" style="display: inline-block; padding: 10px 20px; color: white; background-color: #007BFF; text-decoration: none; border-radius: 4px; margin-top: 20px; font-weight: bold;">Fortfahren</a>
                 <p style="color: #555; font-size: 16px;">Liebe Grüße,</p>
                 <p style="color: #555; font-size: 16px;">Ihr MAC-Team</p>
+                <p style="color: #555; font-size: 16px;">www.mac-versicherung.at</p>
             </div>
     `
     }
@@ -22,6 +24,7 @@ module.exports.getAutoRenewMailOptions = function (from, to, name, url) {
     return {
         from: from,
         to: to,
+        bcc: from,
         subject: 'Aktion erforderlich: Mac Versicherung',
         html: `<div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto;">
     <h2 style="color: #333;">Überprüfung Ihrer Versicherungsdokumente</h2>
@@ -34,6 +37,7 @@ module.exports.getAutoRenewMailOptions = function (from, to, name, url) {
     <p style="color: #555; font-size: 16px;">Vielen Dank für Ihre Mitarbeit.</p>
     <p style="color: #555; font-size: 16px;">Mit freundlichen Grüßen,</p>
     <p style="color: #555; font-size: 16px;">Ihr MAC-Team</p>
+    <p style="color: #555; font-size: 16px;">www.mac-versicherung.at</p>
 </div>     
     `
     }
@@ -44,6 +48,7 @@ module.exports.getAfterSignedMailOption = function (from, to, name, vollmachtPdf
     return {
         from: from,
         to: to,
+        bcc: from,
         subject: 'MAC Dokumente',
         html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto;">
@@ -52,6 +57,7 @@ module.exports.getAfterSignedMailOption = function (from, to, name, vollmachtPdf
                 <p style="color: #555; font-size: 16px;">Sämtliche Änderungen, Schadensmeldungen und Fragen usw. können Sie unter der E-Mail-Adresse office@mac-versicherung.at an uns richten.</p>
                 <p style="color: #555; font-size: 16px;">Mit freundlichen Grüßen</p>
                 <p style="color: #555; font-size: 16px;">Ihr MAC-Team</p>
+                <p style="color: #555; font-size: 16px;">www.mac-versicherung.at</p>
             </div>
         `,
         attachments: [
