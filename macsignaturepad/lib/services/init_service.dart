@@ -4,7 +4,7 @@ class InitService {
   static bool isInited = false;
   static bool isIniting = false;
 
-  static String version = '1.08v';
+  static String version = '1.14v';
 
   static Future init({required int id, required Function function, bool force = false}) async {
     if ((isIniting || isInited) && !force) {

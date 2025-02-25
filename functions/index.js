@@ -220,6 +220,130 @@ async function sendMail(customerId, autoRenew = false) {
 
 }
 
+
+exports.sendMessages = functions.region('europe-west1').https.onRequest(async (request, response) => {
+    return cors(request, response, async () => {
+        if (request.method !== 'POST') {
+            return response.status(400).send('Invalid Request: only POST allowed');
+        }
+        const authorization = request.headers.authorization;
+        const apiKey = authorization.split('Bearer ')[1];
+
+        if (apiKey !== config.FUNCTIONS_KEY) {
+            return response.status(400).send('Ungültiger Request: Authorization key ist falsch.');
+        }
+
+        const requiredFields = ['messageRequestId'];
+        for (const field of requiredFields) {
+            if (!request.body[field]) {
+                console.log(`Missing ${field} field`);
+                return response.status(400).send(`Missing ${field} field`);
+            }
+        }
+
+        const messageRequestId = request.body.messageRequestId;
+
+        // messageRequest-Dokument laden
+        const docRef = admin.firestore().collection('messageRequests').doc(messageRequestId);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            return response.status(400).send('Invalid Request: messageRequest not found');
+        }
+
+        const messageRequest = docSnap.data();
+
+        // -- 1. Validierung des messageRequest --
+        // Prüfen, ob bestimmte Felder existieren
+        if (!messageRequest.customerIds || !Array.isArray(messageRequest.customerIds)) {
+            return response.status(400).send('Invalid Request: customerIds is missing or not an array.');
+        }
+        if (!messageRequest.messageTitle || !messageRequest.messageContent) {
+            return response.status(400).send('Invalid Request: missing messageTitle or messageContent.');
+        }
+
+        // Prüfen, ob die Nachricht nicht schon versendet wurde
+        if (messageRequest.messageSent !== false) {
+            return response.status(400).send('Message already sent!');
+        }
+
+        // -- 2. Kunden auslesen --
+        // customerIds kann relativ groß sein. Hier mit "in" arbeiten:
+        const customerIds = messageRequest.customerIds;
+        if (customerIds.length === 0) {
+            return response.status(400).send('No customerIds provided.');
+        }
+
+        // Firestore Query, um alle benötigten Customer-Dokumente zu bekommen
+        const customersSnap = await admin
+            .firestore()
+            .collection('customers')
+            .where(admin.firestore.FieldPath.documentId(), 'in', customerIds)
+            .get();
+
+        if (customersSnap.empty) {
+            // Kein Kunde gefunden
+            return response.status(400).send('No matching customers found for provided IDs.');
+        }
+
+        // Aus den gefundenen Docs Kundendaten sammeln
+        const customers = [];
+        customersSnap.forEach(cDoc => {
+            const cData = cDoc.data();
+            // Du kannst hier z.B. E-Mail, Phone etc. rausholen
+            customers.push({
+                id: cDoc.id,
+                ...cData
+            });
+        });
+
+        // -- 3. Nachricht versenden (Beispielhaft) --
+        // Hier solltest du den eigentlichen Versand implementieren, z.B.:
+        // await sendEmailToCustomers(customers, messageRequest.messageTitle, messageRequest.messageContent);
+        // oder SMS usw. je nach sendType.
+
+        // Beispiel: wir loopen durch und "senden" (nur console.log)
+        console.log(`Sende Nachricht an ${customers.length} Kunden...`);
+        const todos = [];
+        for (const cust of customers) {
+            todos.push(sendEmailToCustomer(cust.email, messageRequest.messageTitle, messageRequest.messageContent));
+        }
+        await Promise.all(todos);
+        console.log(`Fertig mit Senden (Mock) ...`);
+
+        // -- 4. Markieren als gesendet --
+        await docRef.update({
+            messageSent: true,
+            sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Antwort an den Client
+        return response.status(200).send(`Erfolgreich ${customers.length} Nachrichten versendet.`);
+    });
+});
+
+exports.unsubscribeMarketing = functions.region('europe-west1').https.onRequest(async (request, response) => {
+    return cors(request, response, async () => {
+        if (request.method !== 'GET') {
+            response.status(400).send('Invalid Request');
+            return;
+        }
+        // TODO make it more secure
+
+        const customerId = request.query.customerId;
+        const customer = (await admin.firestore().collection('customers').doc(customerId).get()).data();
+        if (customer === undefined) {
+            response.status(400).send('Invalid Request');
+            return;
+        }
+        await admin.firestore().collection('customers').doc(customerId).update({
+            allowMarketing: false
+        });
+        response.status(200).send('Success');
+
+    });
+});
+
 exports.signPdfs = functions.region('europe-west1').https.onRequest(async (request, response) => {
 
     return cors(request, response, async () => {
@@ -308,6 +432,7 @@ exports.signPdfs = functions.region('europe-west1').https.onRequest(async (reque
             lastSignatureId: docRef.id,
             bprotokollExp: bprotokollExp,
             vollmachtExp: vollmachtExp,
+            allowMarketing: true,
             token: null
         })
 
@@ -316,7 +441,6 @@ exports.signPdfs = functions.region('europe-west1').https.onRequest(async (reque
         }
     });
 });
-
 
 exports.weekdayJob = functions.pubsub.schedule('0 9 9 * *').timeZone('Europe/Berlin').onRun(() => {
     return checkAndSendMail()
@@ -340,6 +464,31 @@ async function checkAndSendMail() {
         });
     });
     return null;
+}
+
+async function sendEmailToCustomer(email, subject, messageText) {
+    if (!email || !subject || !messageText) {
+        console.error('Invalid email data:', email, subject, messageText);
+        return
+    }
+
+    // E-Mail-Optionen für Nodemailer
+    const mailOptions = {
+        from: config.email,            // Absenderadresse (z. B. "Dein Name <deinaccount@outlook.com>")
+        to: email,           // Empfänger
+        subject: subject,             // Betreff
+        text: messageText,            // Nachricht als Plain-Text
+    };
+
+    try {
+        // Den Versand durchführen
+        await transporter.sendMail(mailOptions);
+        console.log(`E-Mail an ${email} gesendet: ${subject}`);
+    } catch (error) {
+        console.error('Fehler beim Senden der E-Mail:', error);
+        // Je nach Bedarf Fehler weiterwerfen oder nur loggen
+        throw error;
+    }
 }
 
 async function sendMailWithAttachments(vollmachtPdf, protokollPdf, customerEmail, name) {

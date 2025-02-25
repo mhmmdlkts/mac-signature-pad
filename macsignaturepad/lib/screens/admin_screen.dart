@@ -19,6 +19,7 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
+  bool seeAll = false;
   bool _isLoading = true;
   bool _sendSmsLoading = false;
   bool _sendEmailLoading = false;
@@ -107,7 +108,7 @@ class _AdminScreenState extends State<AdminScreen> {
               child: TextField(
                 onChanged: (value) {
                   setState(() {
-                    query = value;
+                    query = value.trim();
                   });
                 },
                 decoration: const InputDecoration(
@@ -117,27 +118,45 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ),
             Container(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Container(width: 10),
-                  Expanded(child: ElevatedButton(
-                    onPressed: () async {
-                      await Navigator.pushNamed(context, '/admin/createCustomer');
-                    },
-                    child: const Text('Neuen Kunden anlegen +'),
-                  ),),
-                  Container(width: 10),
-                  ElevatedButton(
-                    onPressed: _isLoading?null:refresh,
-                    child: const Icon(
-                      Icons.refresh
-                    )
-                  ),
-                  Container(width: 10),
-                ],
-              )
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    Container(width: 10),
+                    Expanded(child: ElevatedButton(
+                      onPressed: () async {
+                        await Navigator.pushNamed(context, '/admin/createCustomer');
+                      },
+                      child: const Text('Neuen Kunden anlegen +'),
+                    ),),
+                    Container(width: 10),
+                    ElevatedButton(
+                        onPressed: _isLoading?null:refresh,
+                        child: const Icon(
+                            Icons.refresh
+                        )
+                    ),
+                    Container(width: 10),
+                  ],
+                )
             ),
+            if (AdvisorService.isAdmin)
+              Container(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      Container(width: 10),
+                      Expanded(child: ElevatedButton(
+                        onPressed: () async {
+                          setState(() {
+                            seeAll = !seeAll;
+                          });
+                        },
+                        child: seeAll?const Text('Nur meine Kunden anzeigen'):const Text('Alle Kunden anzeigen'),
+                      ),),
+                      Container(width: 10),
+                    ],
+                  )
+              ),
             if (!isSearchResult)
               Row(
               children: [
@@ -254,6 +273,9 @@ class _AdminScreenState extends State<AdminScreen> {
                         );
                       }
                       List<Customer> customers = snapshot.data as List<Customer>;
+                      if (!seeAll) {
+                        customers = customers.where((element) => element.advisorId == AdvisorService.advisor!.id).toList();
+                      }
                       return ListView.separated(
                         physics: const NeverScrollableScrollPhysics(),
                         shrinkWrap: true,
@@ -343,18 +365,26 @@ class _AdminScreenState extends State<AdminScreen> {
                         context: context,
                         builder: (BuildContext context) {
                           return AlertDialog(
-                            title: const Text('Excel Export'),
+                            title: const Text('Mehr'),
                             content: SizedBox(
                               width: double.maxFinite,
                               child: ListView(
                                 shrinkWrap: true,
                                 children: [
                                   ElevatedButton(
-                                    onPressed: () async {
+                                    onPressed: () {
                                       CSVService.getCSV();
                                       Navigator.of(context).pop();
                                     },
                                     child: const Text('Kunden exportieren'),
+                                  ),
+                                  SizedBox(height: 10),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      Navigator.pushNamed(context, '/admin/emailer');
+                                    },
+                                    child: const Text('Nachricht Sender'),
                                   ),
                                 ],
                               ),
@@ -609,6 +639,24 @@ class _AdminScreenState extends State<AdminScreen> {
                       SelectableText('Steuernr: ${customer.getReadableStnr}'),
                       SelectableText('Erstellungszeit: ${customer.readableCreateTime}'),
                       SelectableText('Berater: ${customer.advisorName}'),
+                      Row(
+                        children: [
+                          SelectableText('Werbung: ${customer.allowMarketing?'Ja':'Nein'}'),
+                          Container(width: 2),
+                          if (customer.allowMarketing)
+                            InkWell(
+                              onTap: () async {
+                                // show dialog are you sure
+                                bool res = await showConfirmationDialog(context, customer.readableName);
+                                if (res) {
+                                  await customer.unsubscribeNewsletter();
+                                  setState(() {});
+                                }
+                              },
+                              child: const Icon(Icons.remove, color: Colors.red, size: 20,),
+                            )
+                        ],
+                      )
                     ],
                   ),
                 ),
@@ -691,6 +739,33 @@ class _AdminScreenState extends State<AdminScreen> {
     } else {
       throw 'Could not launch $url';
     }
+  }
+
+  Future<bool> showConfirmationDialog(BuildContext context, String customerName) async {
+    return await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Bestätigung"),
+          content: Text(
+              "Möchten Sie den Kunden $customerName wirklich aus dem Newsletter abmelden?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: Text("Abbrechen"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: Text("Ja"),
+            ),
+          ],
+        );
+      },
+    ) == true;
   }
 
   Future<void> downloadFile(String url, String fileName) async {

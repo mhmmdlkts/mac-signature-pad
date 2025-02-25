@@ -5,6 +5,7 @@ import 'package:macsignaturepad/models/customer.dart';
 import 'package:macsignaturepad/screens/admin_screen.dart';
 import 'package:macsignaturepad/screens/advisors_screen.dart';
 import 'package:macsignaturepad/screens/create_customer_screen.dart';
+import 'package:macsignaturepad/screens/create_message_screen.dart';
 import 'package:macsignaturepad/screens/login_screen.dart';
 import 'package:macsignaturepad/screens/no_signature_screen.dart';
 import 'package:macsignaturepad/screens/sign_screen.dart';
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
         '/admin': (context) => isSignedIn?const AdminScreen():const LoginScreen(),
         '/admin/createCustomer': (context) => const CreateCustomerScreen(),
         '/admin/advisors': (context) => const AdvisorsScreen(),
+        '/admin/emailer': (context) => const CreateMessageScreen(),
       },
       title: 'Mac Signature Pad',
       theme: ThemeData(

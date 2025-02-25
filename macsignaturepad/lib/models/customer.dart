@@ -37,6 +37,7 @@ class Customer implements Comparable {
   String? email;
   String? uid;
   String? stnr;
+  bool allowMarketing;
   List<ServiceDetails>? details;
   List<AnalysisDetails>? analysisOptions;
   Map<String, Map>? extraInfo;
@@ -57,7 +58,8 @@ class Customer implements Comparable {
     String? stnr,
     List<ServiceDetails>? details,
     List<AnalysisDetails>? analysisOptions,
-    Map<String, Map>? extraInfo
+    Map<String, Map>? extraInfo,
+    bool allowMarketing = false,
   }) => Customer(
     advisorId: AdvisorService.advisor?.id??'',
     advisorName: AdvisorService.advisor?.name??'',
@@ -79,6 +81,7 @@ class Customer implements Comparable {
     extraInfo: extraInfo,
     token: generateToken(),
     ts: Timestamp.now(),
+    allowMarketing: allowMarketing
   );
 
   Customer({
@@ -93,6 +96,7 @@ class Customer implements Comparable {
     required this.street,
     required this.ts,
     required this.phone,
+    required this.allowMarketing,
     this.title,
     this.anrede,
     this.smsSentTime,
@@ -154,6 +158,7 @@ class Customer implements Comparable {
       uid: json['uid'],
       stnr: json['stnr'],
       token: json['token'],
+      allowMarketing: json['allowMarketing']??false,
       details: details,
       analysisOptions: analysisOptions,
       nextTermin: nextTermin,
@@ -267,8 +272,8 @@ class Customer implements Comparable {
 
   List<String> get searchKey {
     List<String> keys = [];
-    keys.add(name.trim().toLowerCase());
-    keys.add(surname.trim().toLowerCase());
+    keys.addAll(name.trim().toLowerCase().split(' '));
+    keys.addAll(surname.trim().toLowerCase().split(' '));
     keys.add(phone.trim().toLowerCase());
     if (email != null) keys.add(email!.trim().toLowerCase());
     return keys;
@@ -277,7 +282,7 @@ class Customer implements Comparable {
   String get readableName {
     String totalName = '${name.trim()} ${surname.trim()}';
     if (anrede != null && anrede!.isNotEmpty) {
-      totalName = '$anrede $name';
+      totalName = '$anrede $totalName';
     }
     if (title != null && title!.isNotEmpty) {
       totalName = '$title $totalName';
@@ -353,4 +358,11 @@ class Customer implements Comparable {
   }
 
   Future<bool> setIsDownloaded() async => await lastSignature?.setIsDownloaded(id)??false;
+
+  Future unsubscribeNewsletter() async {
+    await FirestorePathsService.getCustomerDoc(customerId: id).update({
+      'allowMarketing': false,
+    });
+    allowMarketing = false;
+  }
 }

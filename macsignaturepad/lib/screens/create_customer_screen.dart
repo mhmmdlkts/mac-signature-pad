@@ -106,7 +106,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
         );
         return;
       }
-      if (_anrede == null) {
+      if (!isCompany && _anrede == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Bitte wählen Sie eine Anrede aus'),
@@ -215,7 +215,6 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                           onChanged: (String? value) {
                             setState(() {
                               _anrede = value;
-                              print(_anrede);
                             });
                           },
                         ),
@@ -227,7 +226,6 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                           onChanged: (String? value) {
                             setState(() {
                               _anrede = value;
-                              print(_anrede);
                             });
                           },
                         ),
