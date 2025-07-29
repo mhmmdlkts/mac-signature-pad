@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:macsignaturepad/enums/required_documents.dart';
 import 'package:macsignaturepad/models/service_details.dart';
 import 'package:macsignaturepad/models/signature.dart';
 import 'package:macsignaturepad/services/customer_service.dart';
@@ -41,6 +42,8 @@ class Customer implements Comparable {
   List<ServiceDetails>? details;
   List<AnalysisDetails>? analysisOptions;
   Map<String, Map>? extraInfo;
+  List<RequiredDocument> actions;
+  Map<RequiredDocument, String> documents;
 
   factory Customer.create({
     required String name,
@@ -60,6 +63,8 @@ class Customer implements Comparable {
     List<AnalysisDetails>? analysisOptions,
     Map<String, Map>? extraInfo,
     bool allowMarketing = false,
+    List<RequiredDocument> actions = const [],
+    Map<RequiredDocument, String> documents = const {},
   }) => Customer(
     advisorId: AdvisorService.advisor?.id??'',
     advisorName: AdvisorService.advisor?.name??'',
@@ -81,7 +86,9 @@ class Customer implements Comparable {
     extraInfo: extraInfo,
     token: generateToken(),
     ts: Timestamp.now(),
-    allowMarketing: allowMarketing
+    allowMarketing: allowMarketing,
+    actions: actions,
+    documents: documents,
   );
 
   Customer({
@@ -97,6 +104,8 @@ class Customer implements Comparable {
     required this.ts,
     required this.phone,
     required this.allowMarketing,
+    required this.actions,
+    required this.documents,
     this.title,
     this.anrede,
     this.smsSentTime,
@@ -133,6 +142,10 @@ class Customer implements Comparable {
     Timestamp ts = json['ts'] is Timestamp ? json['ts'] : convertMapToTimestamp(json['ts']);
     Timestamp? nextTermin = json['nextTermin']==null?null:(json['nextTermin'] is Timestamp ? json['nextTermin'] : convertMapToTimestamp(json['nextTermin']));
     List<ServiceDetails>? details = json['details'] == null ? null : List<ServiceDetails>.from(json['details'].map((x) => ServiceDetails.fromJson(x)));
+    // RequiredDocument is an enum, so we need to convert it properly
+    List<RequiredDocument> actions = json['actions'] == null ? [] : List<RequiredDocument>.from(
+      json['actions'].map((x) => RequiredDocument.values.firstWhere((e) => e.name == x))
+    );
 
     List<AnalysisDetails>? analysisOptions = json['analysisOptions'] == null ? null : List<AnalysisDetails>.from(json['analysisOptions'].map((x) => AnalysisDetails.fromJson(x)));
     String street = json['street'];
@@ -163,6 +176,13 @@ class Customer implements Comparable {
       analysisOptions: analysisOptions,
       nextTermin: nextTermin,
       ts: ts,
+      actions: actions,
+      documents: json['documents'] == null ? {} : Map<RequiredDocument, String>.from(
+        json['documents'].map((key, value) => MapEntry(
+          RequiredDocument.values.firstWhere((e) => e.name == key),
+          value,
+        )),
+      ),
     );
   }
 
@@ -267,7 +287,9 @@ class Customer implements Comparable {
     'details': details?.map((e) => e.toJson()).toList(),
     'analysisOptions': analysisOptions?.map((e) => e.toJson()).toList(),
     'extraInfo': extraInfo,
-    'searchKey': searchKey
+    'searchKey': searchKey,
+    'actions': actions.map((e) => e.name).toList(),
+    'documents': documents.map((key, value) => MapEntry(key.name, value)),
   };
 
   List<String> get searchKey {

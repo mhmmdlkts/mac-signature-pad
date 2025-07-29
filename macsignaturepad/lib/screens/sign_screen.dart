@@ -1,16 +1,23 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lottie/lottie.dart';
 import 'package:hand_signature/signature.dart';
 // import 'package:syncfusion_flutter_signaturepad/signaturepad.dart';
 import 'package:macsignaturepad/decoration/colors.dart';
+import 'package:macsignaturepad/enums/required_documents.dart';
 import 'package:macsignaturepad/models/customer.dart';
 import 'package:macsignaturepad/screens/pdf_viewer_screen.dart';
 import 'package:macsignaturepad/services/firebase_service.dart';
+import 'package:macsignaturepad/services/firestore_paths_service.dart';
 
 import '../services/init_service.dart';
 import '../services/pdf_service.dart';
@@ -25,6 +32,8 @@ class SignScreen extends StatefulWidget {
 }
 
 class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateMixin{
+
+  ValueNotifier<Map<RequiredDocument, bool>> requiredDocsStatus = ValueNotifier({});
 
   late final AnimationController doneController;
 
@@ -57,8 +66,6 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
     threshold: 3.0,
     smoothRatio: 0.65,
     velocityRange: 2.0,
-
-
   );
 
   @override
@@ -80,6 +87,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
     }
 
     doneController = AnimationController(vsync: this);
+
   }
 
   Future initToken(String token) async {
@@ -90,6 +98,19 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
       );
       if (response.statusCode == 200) {
         customer = Customer.fromJson(response.data, response.data['id']);
+
+        try {
+          requiredDocsStatus.value = Map.fromEntries(
+            customer!.actions.map(
+              (e) => MapEntry<RequiredDocument, bool>(e, customer!.documents.containsKey(e) && customer!.documents[e] != null && customer!.documents[e]!.isNotEmpty)
+            ),
+          );
+          setState(() {});
+        } catch (e) {
+          requiredDocsStatus.value = {};
+          print('Fehler beim Laden der erforderlichen Dokumente: $e');
+        }
+        setState(() {});
       } else {
         setState(() {
           showDone = true;
@@ -255,6 +276,8 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
                                     );
                                 },
                               ),
+                              if (requiredDocsStatus.value.isNotEmpty)
+                                actionsWidget(),
                               const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 5),
                                 child: Text(
@@ -299,6 +322,131 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
     );
   }
 
+  Widget actionsWidget() {
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      child: Card(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text('Dokumente Übersicht'),
+                content: ValueListenableBuilder(
+                  valueListenable: requiredDocsStatus,
+                  builder: (context, docs, _) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: docs.entries.map((entry) {
+                      final bool ok = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            _onAddTicket(entry.key);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: ok ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: ok ? Colors.green : Colors.grey),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  ok ? Icons.check_circle : Icons.cancel,
+                                  color: ok ? Colors.green : Colors.redAccent,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    entry.key.germanName,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: ok ? Colors.green : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.black45),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  )
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Schließen"),
+                  )
+                ],
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    if (requiredDocsStatus.value.isEmpty)
+                      const Icon(Icons.info_outline, color: Colors.blueAccent)
+                    else
+                      requiredDocsStatus.value.values.any((e) => !e)
+                        ? const Icon(Icons.warning_amber_rounded, color: Colors.redAccent)
+                        : const Icon(Icons.check_circle, color: Colors.green),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Erforderliche Dokumente:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ValueListenableBuilder(
+                        valueListenable: requiredDocsStatus,
+                        builder: (context, docs, _) => Text(
+                          docs.keys.map((e) => e.germanName).join(', '),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        )
+                      )
+                    )
+                  ],
+                )
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool allDocsDone() {
+    return requiredDocsStatus.value.values.every((e) => e);
+  }
+
   Widget _customSignButton() {
     BorderRadius radius = BorderRadius.circular(10);
     return ValueListenableBuilder(
@@ -306,7 +454,7 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
       builder: (context, value, child) => ValueListenableBuilder(
         valueListenable: signLoading,
         builder: (context, data, child) {
-          bool isDisabled = rawImageFit.value==null||signLoading.value;
+          bool isDisabled = rawImageFit.value==null||signLoading.value||!allDocsDone();
           return SizedBox(
               width: double.infinity,
               child: Material(
@@ -560,7 +708,166 @@ class _SignScreenState extends State<SignScreen> with SingleTickerProviderStateM
       errorMessage.value = 'Fehler beim Öffnen des PDFs: $e [f36]';
     }
   }
+
+
+  void _onAddTicket(RequiredDocument docType) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Foto aufnehmen'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _takePhoto(docType);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.image),
+                title: const Text('Foto hochladen'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _uploadPhoto(docType);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.upload_file),
+                title: const Text('Dokument hochladen'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _uploadDocument(docType);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _uploadDocument(RequiredDocument docType) async {
+    final FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'], // Erlaubte Dateitypen
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      final file = result.files.first;
+      final extension = file.extension != null ? '.${file.extension}' : '';
+      final Uint8List fileData = file.bytes ?? await File(file.path!).readAsBytes();
+      final downloadUrl = await uploadFileToStorage(fileData, extension, docType);
+      if (downloadUrl != null) {
+        requiredDocsStatus.value = {
+          ...requiredDocsStatus.value,
+          docType: true
+        };
+      }
+    }
+  }
+
+  Future<void> _takePhoto(RequiredDocument docType) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+
+      if (photo != null) {
+        final bytes = await photo.readAsBytes();
+        final downloadUrl = await uploadFileToStorage(bytes, '.jpg', docType);
+        if (downloadUrl != null) {
+          requiredDocsStatus.value = {
+            ...requiredDocsStatus.value,
+            docType: true
+          };
+        }
+
+        setState(() {});
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fotoaufnahme abgebrochen.')),
+        );
+      }
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fehler beim Aufnehmen des Fotos: $e')),
+      );
+    }
+  }
+
+  Future<void> _uploadPhoto(RequiredDocument docType) async {
+    try {
+      final FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final extension = file.extension != null ? '.${file.extension}' : '';
+        final Uint8List fileData = file.bytes ?? await File(file.path!).readAsBytes();
+        final downloadUrl = await uploadFileToStorage(fileData, extension, docType);
+        if (downloadUrl != null) {
+          requiredDocsStatus.value = {
+            ...requiredDocsStatus.value,
+            docType: true
+          };
+        }
+        if (allDocsDone()) {
+          Navigator.pop(context);
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kein Bild ausgewählt.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fehler beim Hochladen des Bildes: $e')),
+      );
+    }
+  }
+
+  Future<String?> uploadFileToStorage(Uint8List fileData, String extension, RequiredDocument document) async {
+    if (customer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kunde nicht gefunden.')),
+      );
+      return null;
+    }
+
+    try {
+      final storagePath = 'documents/${customer!.id}/${document.name}_${DateTime.now().millisecondsSinceEpoch}$extension';
+      final storageRef = FirebaseStorage.instance.ref().child(storagePath);
+
+      final uploadTask = await storageRef.putData(fileData);
+
+      customer!.documents[document] = storagePath;
+      requiredDocsStatus.value[document] = true;
+
+      await FirestorePathsService.getCustomerDoc(customerId: customer!.id).update({
+        'documents': customer!.documents.map((key, value) => MapEntry(key.name, value)),
+      });
+
+      setState(() {});
+
+      return storagePath;
+    } catch (e) {
+      print('Fehler beim Hochladen der Datei: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fehler beim Upload: $e')),
+      );
+      return null;
+    }
+  }
+
 }
+
 
 class TrianglePainter extends CustomPainter {
   @override

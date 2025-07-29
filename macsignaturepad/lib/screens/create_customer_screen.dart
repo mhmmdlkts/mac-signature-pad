@@ -5,6 +5,7 @@ import 'package:country_code_picker/country_code_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:macsignaturepad/enums/required_documents.dart';
 import 'package:macsignaturepad/models/service_details.dart';
 
 import 'package:macsignaturepad/services/all_services_service.dart';
@@ -58,6 +59,12 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   String _city = '';
   String _street = '';
   String errorMessage = '';
+  final Map<RequiredDocument, bool> _requiredDocuments = {
+    RequiredDocument.photoID: true,
+    RequiredDocument.bankCard: true,
+    RequiredDocument.registration: false,
+    RequiredDocument.drivingLicense: false,
+  };
   final ValueNotifier<String> _notesNotifier = ValueNotifier<String>('');
   final Map<String, List<ServiceDetails>> _insuranceOptions = AllServicesService.getNewMap();
   final List<AnalysisDetails> _analysisOptions = AllServicesService.getNewMapAnalysisDetails();
@@ -142,7 +149,8 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
             nextTermin: _nextTermin,
             details: _insuranceOptions.values.expand((element) => element).toList(),
             analysisOptions: _analysisOptions,
-            extraInfo: _erteilterAuftrag
+            extraInfo: _erteilterAuftrag,
+            actions: _requiredDocuments.keys.where((e) => _requiredDocuments[e]!).toList(),
           ),
           sms: _sendSms,
           email: _sendEmail,
@@ -473,6 +481,24 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
               );
             }).toList(),
             const Divider(height: 0,),
+            Container(height: 10,),
+            Column(
+              children: _requiredDocuments.keys.map((doc) {
+                return Row(
+                  children: [
+                    Checkbox(
+                      value: _requiredDocuments[doc],
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _requiredDocuments[doc] = value!;
+                        });
+                      },
+                    ),
+                    Text(doc.germanName),
+                  ],
+                );
+              }).toList(),
+            ),
             Container(height: 10,),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,

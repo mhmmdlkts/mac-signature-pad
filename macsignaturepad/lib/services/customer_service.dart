@@ -46,6 +46,7 @@ class CustomerService {
     }
 
 
+
     QuerySnapshot? querySnapshot;
     QuerySnapshot? querySnapshot2;
     if (AdvisorService.isAdmin) {

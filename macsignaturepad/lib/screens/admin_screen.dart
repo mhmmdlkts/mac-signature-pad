@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:macsignaturepad/enums/required_documents.dart';
 import 'package:macsignaturepad/screens/splash_screen.dart';
 import 'package:macsignaturepad/services/advisor_service.dart';
 import 'package:macsignaturepad/services/csv_service.dart';
@@ -40,7 +42,9 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<List<Customer>> getCustomers() async {
     if (isSearchResult) {
-      return await CustomerService.searchCustomers(query);
+      List<Customer> res = await CustomerService.searchCustomers(query);
+      print('Found ${res.length} customers');
+      return res;
     }
     await CustomerService.initCustomers(year: selectedYear, month: selectedMonth);
     List<Customer> customers = CustomerService.customersMap['$selectedMonth-$selectedYear']??[];
@@ -48,7 +52,7 @@ class _AdminScreenState extends State<AdminScreen> {
     if (query.isEmpty) {
       return customers;
     }
-    return customers.where((element) {
+    List<Customer> res = customers.where((element) {
       if (query.isEmpty) {
         return true;
       }
@@ -57,6 +61,7 @@ class _AdminScreenState extends State<AdminScreen> {
           (element.email?.toLowerCase().contains(query.toLowerCase())??false) ||
           element.phone.toLowerCase().contains(query.toLowerCase());
     }).toList();
+    return res;
   }
 
   Future refresh() async {
@@ -656,7 +661,14 @@ class _AdminScreenState extends State<AdminScreen> {
                               child: const Icon(Icons.remove, color: Colors.red, size: 20,),
                             )
                         ],
-                      )
+                      ),
+                      customer.actions.isNotEmpty
+                          ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: customer.actions.map((e) {
+                          return _linkButtonDocument(e.germanName, customer.documents[e]);
+                        }).toList(),
+                      ) : const Text('Keine Dokumente erforderlich', style: TextStyle(color: Colors.grey),)
                     ],
                   ),
                 ),
@@ -766,6 +778,39 @@ class _AdminScreenState extends State<AdminScreen> {
         );
       },
     ) == true;
+  }
+
+  Future<String?> getDownloadUrlFromStoragePath(String storagePath) async {
+    try {
+      final ref = FirebaseStorage.instance.ref(storagePath);
+      String url = await ref.getDownloadURL();
+      return url;
+    } catch (e) {
+      print('Fehler beim Holen der Download-URL: $e');
+      return null;
+    }
+  }
+
+  Widget _linkButtonDocument(String text, String? url) {
+    final isAvailable = url != null && url.isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      child: MouseRegion(
+        cursor: isAvailable ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: GestureDetector(
+          onTap: isAvailable
+              ? () async {
+            String? realUrl = (url.startsWith('gs://') || url.startsWith('http'))
+                ? url
+                : await getDownloadUrlFromStoragePath(url);
+            if (realUrl != null) {
+              html.window.open(realUrl, text);
+            }
+          } : null,
+          child: Text(text, style: TextStyle(color: isAvailable ? Colors.blue : Colors.red)),
+        ),
+      ),
+    );
   }
 
   Future<void> downloadFile(String url, String fileName) async {
