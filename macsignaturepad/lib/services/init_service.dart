@@ -1,10 +1,12 @@
 import 'package:macsignaturepad/services/advisor_service.dart';
+import 'package:macsignaturepad/services/customer_service.dart';
+import 'package:macsignaturepad/services/message_service.dart';
 
 class InitService {
   static bool isInited = false;
   static bool isIniting = false;
 
-  static String version = '1.20v';
+  static String version = '1.22v';
 
   static Future init({required int id, required Function function, bool force = false}) async {
     if ((isIniting || isInited) && !force) {
@@ -20,5 +22,8 @@ class InitService {
   static cleanCache() {
     isInited = false;
     isIniting = false;
+    AdvisorService.cleanCache();
+    CustomerService.cleanCache();
+    MessageService.cleanCache();
   }
 }

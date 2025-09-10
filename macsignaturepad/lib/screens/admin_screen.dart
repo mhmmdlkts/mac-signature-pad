@@ -391,6 +391,16 @@ class _AdminScreenState extends State<AdminScreen> {
                                     },
                                     child: const Text('Nachricht Sender'),
                                   ),
+                                  SizedBox(height: 10),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      // Sign out
+                                      FirebaseAuth.instance.signOut();
+                                      InitService.cleanCache();
+                                      Navigator.pushReplacementNamed(context, '/');
+                                    },
+                                    child: const Text('Abmelden', style: TextStyle(color: Colors.red)),
+                                  ),
                                 ],
                               ),
                             ),

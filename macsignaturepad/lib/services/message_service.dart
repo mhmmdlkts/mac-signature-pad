@@ -9,6 +9,10 @@ import 'firebase_service.dart';
 class MessageService {
   static final Map<Customer, bool> allCustomers = {};
 
+  static cleanCache() {
+    allCustomers.clear();
+  }
+
   static Future init() async {
     await FirestorePathsService.getCustomerCol().where('allowMarketing', isEqualTo: true).get().then((snapshot) {
       allCustomers.clear();

@@ -43,6 +43,16 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
 
   Uint8List? bprotokolManuellBytes;
   Uint8List? vollmachtManuelBytes;
+  Map<RequiredDocument, Uint8List?> manuelDocuments = {
+    RequiredDocument.photoID: null,
+    RequiredDocument.bankCard: null,
+  };
+  final Map<RequiredDocument, bool> _requiredDocuments = {
+    RequiredDocument.photoID: true,
+    RequiredDocument.bankCard: true,
+    RequiredDocument.registration: false,
+    RequiredDocument.drivingLicense: false,
+  };
 
   String? _title;
   String? _anrede;
@@ -59,12 +69,6 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   String _city = '';
   String _street = '';
   String errorMessage = '';
-  final Map<RequiredDocument, bool> _requiredDocuments = {
-    RequiredDocument.photoID: true,
-    RequiredDocument.bankCard: true,
-    RequiredDocument.registration: false,
-    RequiredDocument.drivingLicense: false,
-  };
   final ValueNotifier<String> _notesNotifier = ValueNotifier<String>('');
   final Map<String, List<ServiceDetails>> _insuranceOptions = AllServicesService.getNewMap();
   final List<AnalysisDetails> _analysisOptions = AllServicesService.getNewMapAnalysisDetails();
@@ -97,13 +101,27 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
 
   void _saveForm() async {
     if (_formKey.currentState!.validate()) {
-      if (_uploadDoc && (bprotokolManuellBytes == null || vollmachtManuelBytes == null)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bitte laden Sie die Dokumente hoch'),
-          ),
-        );
-        return;
+      if (_uploadDoc) {
+        if (bprotokolManuellBytes == null || vollmachtManuelBytes == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Bitte laden Sie die Dokumente hoch'),
+            ),
+          );
+          return;
+        }
+        for (var doc in _requiredDocuments.keys) {
+          if (_requiredDocuments[doc]!) {
+            if (manuelDocuments[doc] == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Bitte laden Sie das Dokument ${doc.germanName} hoch'),
+                ),
+              );
+              return;
+            }
+          }
+        }
       }
       if (!isInsuranceOptionsValid()) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -156,6 +174,7 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
           email: _sendEmail,
           bprotokolManuellBytes: bprotokolManuellBytes,
           vollmachtManuelBytes: vollmachtManuelBytes,
+          manuelDocuments: manuelDocuments,
         );
 
         if (mounted) {
@@ -491,6 +510,11 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                       onChanged: (bool? value) {
                         setState(() {
                           _requiredDocuments[doc] = value!;
+                          if (value) {
+                            manuelDocuments[doc] = null;
+                          } else {
+                            manuelDocuments.remove(doc);
+                          }
                         });
                       },
                     ),
@@ -691,6 +715,37 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                           },
                           child: const Text('Vollmacht hochladen'),
                         ),
+                      ...manuelDocuments.map((key, value) => MapEntry(key, Column(
+                        children: [
+                          if (value != null)
+                            Row(
+                              children: [
+                                Text('${key.germanName}.pdf'),
+                                IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      manuelDocuments[key] = null;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear),
+                                )
+                              ],
+                            ),
+                          Container(height: 10),
+                          if (value == null)
+                            ElevatedButton(
+                              onPressed: () async {
+                                FilePickerResult? result = await FilePicker.platform.pickFiles();
+                                if (result != null) {
+                                  setState(() {
+                                    manuelDocuments[key] = result.files.single.bytes!;
+                                  });
+                                }
+                              },
+                              child: Text('Datei für ${key.germanName} hochladen'),
+                            ),
+                        ],
+                      ))).values.toList(),
                     ],
                   ),
                 ],

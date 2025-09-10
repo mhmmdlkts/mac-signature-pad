@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:macsignaturepad/services/advisor_service.dart';
 
+import '../enums/required_documents.dart';
 import '../models/customer.dart';
 import '../models/signature.dart';
 import 'firebase_service.dart';
@@ -13,9 +14,12 @@ import 'firestore_paths_service.dart';
 class CustomerService {
   // static final List<Customer> customers = [];
   static final Map<int, Function> _listeners = {};
-  static final Map<String, List<Customer>> customersMap = {
-    
-  };
+  static final Map<String, List<Customer>> customersMap = {};
+
+  static cleanCache() {
+    customersMap.clear();
+    _listeners.clear();
+  }
 
   static Future initCustomers({int? id, Function? function, int year = 0, int month = 0, bool force = false}) async {
     if ((year == 0 || month == 0) && year + month != 0) {
@@ -111,7 +115,7 @@ class CustomerService {
     // notifyListeners();
   }
 
-  static Future addNewCustomer(Customer customer, {bool sms = false, bool email = false, Uint8List? bprotokolManuellBytes, Uint8List? vollmachtManuelBytes}) async {
+  static Future addNewCustomer(Customer customer, {bool sms = false, bool email = false, Uint8List? bprotokolManuellBytes, Uint8List? vollmachtManuelBytes, Map<RequiredDocument, Uint8List?>? manuelDocuments}) async {
     await customer.push();
     String key = '${DateTime.now().month}-${DateTime.now().year}';
     customersMap[key] ??= [];
@@ -124,13 +128,12 @@ class CustomerService {
       String vollmachtDownloadUrl = '';
       String protokollDownloadUrl = '';
       FirebaseStorage storage = FirebaseStorage.instance;
-      // Upload für Protokoll PDF
+
       if (bprotokolManuellBytes != null) {
         try {
           Reference ref = storage.ref('${customer.id}/pdfs/protokoll_v1.pdf');
           await ref.putData(bprotokolManuellBytes);
           protokollDownloadUrl = await ref.getDownloadURL();
-          print('Protokoll hochgeladen');
         } catch (e) {
           print('Fehler beim Hochladen des Protokolls: $e');
         }
@@ -142,9 +145,37 @@ class CustomerService {
           Reference ref = storage.ref('${customer.id}/pdfs/vollmacht_v1.pdf');
           await ref.putData(vollmachtManuelBytes);
           vollmachtDownloadUrl = await ref.getDownloadURL();
-          print('Vollmacht hochgeladen');
         } catch (e) {
           print('Fehler beim Hochladen der Vollmacht: $e');
+        }
+      }
+
+      if (manuelDocuments != null) {
+        // create a mutable copy so we don't modify an unmodifiable map
+        final Map<RequiredDocument, String> mutableDocs = Map<RequiredDocument, String>.from(customer.documents);
+
+        for (var entry in manuelDocuments.entries) {
+          if (entry.value != null) {
+            try {
+
+              final storagePath = 'documents/${customer.id}/${entry.key.name}_${DateTime.now().millisecondsSinceEpoch}';
+              Reference ref = storage.ref(storagePath);
+
+              final uploadTask = await ref.putData(entry.value!);
+
+              mutableDocs[entry.key] = storagePath;
+
+
+              if (mutableDocs.isNotEmpty) {
+                await FirestorePathsService.getCustomerDoc(customerId: customer.id).update({
+                  'documents': mutableDocs.map((key, value) => MapEntry(key.name, value)),
+                });
+              }
+
+            } catch (e) {
+              print('Fehler beim Hochladen von ${entry.key.name}: $e');
+            }
+          }
         }
       }
 
@@ -155,15 +186,12 @@ class CustomerService {
           'lastSignatureId': signature.id
         });
       }
+
     } catch (e) {
       if (kDebugMode) {
         print(e);
       }
     }
-  }
-
-  static cleanCache() {
-    customersMap.clear();
   }
 
   static Future<List<Customer>> searchCustomers(String query) async {
